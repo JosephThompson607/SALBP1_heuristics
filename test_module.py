@@ -546,9 +546,12 @@ def test_alpha_beta_mhh(salbp, C, t_times, precs):
     results2 = poke_mhh(salbp, cycle_time=C, task_times_list=t_times, precedence_list=precs, alpha = [0.2], beta=[0.2])
     results3 = poke_mhh(salbp, cycle_time=C, task_times_list=t_times, precedence_list=precs, alpha = [0], beta=[1.0])
     assert sum(results1.loads) == sum(results2.loads), "sum of loads does not match"
-    print(f"✅ Created ALBPSolution using mhh (ALPHA BETA test) with {results1.n_stations} , {results2.n_stations} , {results3.n_stations}  stations in {time.time() - start} seconds")
-    # print(f"here are the station assignments {results1.task_assignment} , {results2.task_assignment} , {results3.task_assignment}")
-    # print(f"here are the station loads {results1.loads} , {results2.loads} , {results3.loads}")
+    assert max(results2.loads) <= C, f'Max load greater than cycle time for results 2: {results2.loads}'
+    assert max(results3.loads) <= C, f'Max load greater than cycle time for results 3: {results3.loads}'
+
+#print(f"✅ Created ALBPSolution using mhh (ALPHA BETA test) with {results1.n_stations} , {results2.n_stations} , {results3.n_stations}  stations in {time.time() - start} seconds")
+    print(f"here are the station assignments {results1.task_assignment} , {results2.task_assignment} , {results3.task_assignment}")
+    print(f"here are the station loads {results1.loads} , {results2.loads} , {results3.loads}")
 
 def test_gamma_mhh(salbp, C, t_times, precs):
     start = time.time()

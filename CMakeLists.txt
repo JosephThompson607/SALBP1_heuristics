@@ -19,6 +19,8 @@ set(COMMON_SOURCES
         heuristics/vdls.cpp
         heuristics/salbp_basics.cpp
         heuristics/tabu.cpp
+        heuristics/RepairHoff.cpp
+        heuristics/RepairHoff.h
 
 )
 

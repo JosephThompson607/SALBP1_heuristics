@@ -11,6 +11,9 @@
 #include <map>
 #include <optional>
 #include <numeric>
+#define NDEBUG
+#include <cassert>
+
 MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
                     const std::optional<std::vector<float>>& alpha_schedule,
                 const std::optional<std::vector<float>>& beta_schedule,
@@ -23,9 +26,9 @@ MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
     remaining_task_times_(albp.task_time),
     dir_pred_(albp.dir_pred),
     dir_suc_(albp.dir_suc),
-    n_prec_(albp.N, 0),
+    n_pred_(albp.N, 0),
     n_suc_(albp.N, 0),
-    n_prec_orig_(albp.N, 0),
+    n_pred_orig_(albp.N, 0),
     n_suc_orig_(albp.N, 0),
     rng_(seed ? *seed : std::random_device{}()),
     n_attempts_(0),
@@ -60,8 +63,8 @@ MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
 
     
     for(int i = 0; i < albp_.N; i++) {
-        n_prec_orig_[i] = dir_pred_[i].size();
-        if (n_prec_orig_[i] == 0) {
+        n_pred_orig_[i] = dir_pred_[i].size();
+        if (n_pred_orig_[i] == 0) {
             no_prec_tasks_.push_back(i);
         }
     }
@@ -70,9 +73,7 @@ MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
         if (n_suc_orig_[i] == 0) {
             no_suc_tasks_.push_back(i);
         }
-
     }
-
 }
     void MultiHoff::initialize_current_s_assignments() {
     // Initialize all needed keys
@@ -83,14 +84,23 @@ MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
 }
 
 
-    std::vector<int> MultiHoff::filter_eligible(std::vector<int>& elig) {
+    std::vector<int> MultiHoff::filter_eligible(std::vector<int>& elig, bool reverse) {
         std::vector<int> result;
         result.reserve(elig.size());
         for (int i =0; i < elig.size(); i++) {
             int task = elig[i];
-            if (n_prec_[task] != -1) {
-                result.push_back(task);
+            //If task is not already assigned, it is eligible
+            if (reverse) {
+                if (n_pred_[task] != -1) {
+                    result.push_back(task);
+                }
             }
+            else {
+                if (n_suc_[task] != -1) {
+                    result.push_back(task);
+                }
+            }
+
         }
         return result;
 }
@@ -118,25 +128,33 @@ void MultiHoff::mark_task_assigned(const int task, std::vector<int>& elig, const
             elig.pop_back();
         }
     }
-    n_prec_[task] = -1;
+    n_pred_[task] = -1;
     n_suc_[task] = -1;
     remaining_task_times_[task] = 0;
 }
 
-
+int calc_load(const std::vector<int>&s_assign,const ALBP& albp) {
+    int total=0;
+    for (int task:s_assign) {
+        total+= albp.task_time[task];
+    }
+    return total;
+}
 int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
     s_task_assign_.clear();
     best_s_task_assign_.clear();
     n_attempts_ = 0;
     min_cost_ = FLT_MAX;
     gen_load(0, albp_.C, 0, albp_.C, elig );
+
+    assert(calc_load(best_s_task_assign_, albp_)<= albp_.C);
     if (back_pass_) {
         s_backwards_.push_front(best_s_task_assign_);
     }
     else {
         s_forwards_.push_back(best_s_task_assign_);
     }
-    int last_task = std::numeric_limits<int>::max();
+    int rightmost_station = std::numeric_limits<int>::max();//The rightmost station, starting indexing from the right
     for (const int task : best_s_task_assign_) {
         //Remove task from consideration
         mark_task_assigned(task, elig);
@@ -148,7 +166,7 @@ int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
         }
         else {
             if (reverse_s_assignment_[task] > -1) {
-                last_task = std::min(last_task, reverse_s_assignment_[task]);
+                rightmost_station = std::min(rightmost_station, reverse_s_assignment_[task]);
             }
         }
 
@@ -156,96 +174,100 @@ int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
     if (check_ub()) {
         return -1;
     }
-    return last_task;
+    return rightmost_station;
 }
 
 
-    ALBPSolution MultiHoff::solve_one_pass() {
-    bool improved=false;
+int MultiHoff::forward_from(int mf,std::vector<int>& eligible_tasks, std::deque<std::vector<int>>& station_assignments, int& station_counter, std::vector<int>& ranking) {
+    if (mf > 1 ) { //reloading cached data for forward pass
+        for (int s = 0; s < mf-1; s++) {
+            for (const int task : station_assignments[s]){
+                mark_task_assigned(task, eligible_tasks);
+                add_new_available(eligible_tasks, task);
+            }
+        }
+        station_counter = mf -1;
+    }
+    //Hoffman pass forward
+    int last_task = std::numeric_limits<int>::max(); //-1 if ub violation, or last cached station to remove
+    while (station_counter < mf && !eligible_tasks.empty() && last_task != -1) {
+        sort_by_ranking(eligible_tasks, ranking);
+        last_task =one_packing_search(eligible_tasks, station_counter);
+        ++station_counter;
+    }
+    return last_task;
+}
 
+int MultiHoff::backwards_from(int mf, std::vector<int> &eligible_tasks, int last_station,
+                              std::deque<std::vector<int> > &station_assignments, int &station_counter,
+                              std::vector<int> &ranking) {
+    back_pass_ = true;
+
+    if (mf > 0 && last_station != -1 ) {
+        //Remove tasks from eligible backward that were already assigned in forward
+        eligible_tasks = filter_eligible(eligible_tasks, true);
+        //using catched partial solutions from previous passes
+        //Remove all stations from cache that were impacted by forward pass
+        if (station_assignments.size() > last_station) {
+            station_assignments.erase(station_assignments.begin(), station_assignments.end()-last_station);
+        }
+        //Add remaining station assignments from previous solutions
+        for (int i=station_assignments.size()-1; i >= 0; i--) {
+            for (int task: station_assignments[i]) {
+                mark_task_assigned(task, eligible_tasks);
+                add_new_available(eligible_tasks, task);
+            }
+        }
+        station_counter = station_assignments.size();
+    }
+    //hoffman pass backwards
+    while (!eligible_tasks.empty()&&last_station != -1) {
+        sort_by_ranking(eligible_tasks, ranking);
+        last_station = one_packing_search(eligible_tasks, station_counter);
+        ++station_counter;
+    }
+    return last_station;
+}
+void reflect_vector(std::vector<int>& v) {
+    if (v.empty()) return;
+    int lo = *std::min_element(v.begin(), v.end());
+    int hi = *std::max_element(v.begin(), v.end());
+    for (int& x : v) {
+        x = lo + hi - x;
+    }
+}
+
+ALBPSolution MultiHoff::solve_one_pass() {
+    bool improved=false;
     for (int mf =0; mf <ub_; mf++) {
         back_pass_=false;
         std::vector<int> eligible_tasks_forward = no_prec_tasks_;
         std::vector<int> eligible_tasks_backward = no_suc_tasks_;
         forward_station_ = 0;
         backward_station_ = 0;
-        n_prec_ = n_prec_orig_;
+        n_pred_ = n_pred_orig_;
         n_suc_ = n_suc_orig_;
         remaining_task_times_ = albp_.task_time;
-        int n_forward_assigned_tasks = 0;
-        if (mf > 1 ) { //reloading cached data for forward pass
-            for (int s = 0; s < mf-1; s++) {
-                for (const int task : s_forwards_[s]){
-                    mark_task_assigned(task, eligible_tasks_forward);
-                    add_new_available(eligible_tasks_forward, task);
-                    n_forward_assigned_tasks++;
-                }
-            }
-            forward_station_ = mf -1;
-        }
-        //Hoffman pass forward
-        int last_task = std::numeric_limits<int>::max(); //-1 if ub violation, or last cached station to remove
-        while (forward_station_ < mf && !eligible_tasks_forward.empty() && last_task != -1) {
-            sort_by_ranking(eligible_tasks_forward, forw_ranking_);
-            last_task =one_packing_search(eligible_tasks_forward, forward_station_);
-            ++forward_station_;
-        }
+        int last_station = forward_from(mf, eligible_tasks_forward,s_forwards_, forward_station_, forw_ranking_);
         //BACKWARDS PASS
-        back_pass_ = true;
-        int n_cached = 0;
-        if (mf > 0 && last_task != -1 ) {
-            //Remove tasks from eligible forward that were already assigned
-            eligible_tasks_backward = filter_eligible(eligible_tasks_backward);
-            //using catched partial solutions from previous passes
-            //Remove all stations from cache that were impacted by forward pass
-            if (s_backwards_.size() > last_task) {
-                s_backwards_.erase(s_backwards_.begin(), s_backwards_.end() - last_task);
-            }
-            //Add remaining station assignments from previous solutions
-            for (int i=s_backwards_.size()-1; i >= 0; i--) {
-                for (int task: s_backwards_[i]) {
-                    n_cached++;
-                    mark_task_assigned(task, eligible_tasks_backward);
-                    add_new_available(eligible_tasks_backward, task);
-
-                }
-            }
-
-            backward_station_ = s_backwards_.size();
-        }
-        //hoffman pass packwards
-        while (!eligible_tasks_backward.empty()&&last_task != -1) {
-            sort_by_ranking(eligible_tasks_backward, back_ranking_);
-            last_task = one_packing_search(eligible_tasks_backward, backward_station_);
-            ++backward_station_;
-        }
+        last_station = backwards_from(mf, eligible_tasks_backward, last_station, s_backwards_, backward_station_, back_ranking_);
         int n_stations = forward_station_ + backward_station_;
-        // std::cout << "combined has solution has "<< n_stations << "last task "<< last_task <<std::endl;
-        // std::cout << "Solution printout forward" << std::endl;
-        // for (int s = 0; s < mf; s++) {
-        //     for (const int task : s_forwards_[s]) {
-        //         std::cout << "station task" << s << " " << task << std::endl;
-        //     }
-        // }
-        // std::cout << "Solution printout backward" << std::endl;
-        // for (int s = 0; s<backward_station_; s++) {
-        //     for (const int task : s_backwards_[s]) {
-        //         std::cout << "station task" << s + mf << " " << task << std::endl;
-        //     }
-        // }
 
-
-        if (n_stations < ub_ && last_task != -1) {
+        if (n_stations < ub_ && last_station != -1) {
             improved = true;
             ub_ = n_stations;
-            for (int s = 0; s < mf; s++) {
+            std::cout <<"NOW Forwards"<< std::endl;
+            for (int s = 0; s < forward_station_; s++) {
                 for (const int task : s_forwards_[s]) {
+                    std::cout << "station " << s+1 << " task " << task+1 << std::endl;
                     mhh_sol_.task_assignment[task] = s;
                 }
             }
+            std::cout <<"NOW BACKWARDS"<< std::endl;
             for (int s = 0; s<backward_station_; s++) {
                 for (const int task : s_backwards_[s]) {
-                    mhh_sol_.task_assignment[task] = mf + s;
+                    mhh_sol_.task_assignment[task] = forward_station_ + s;
+                    std::cout << "station " << forward_station_ + s +1 << " task " << task+1 << std::endl;
                 }
             }
         }
@@ -257,7 +279,7 @@ int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
     }
     if (improved){ //Save new solution if we have an improvement
         if (reverse_) {
-            std::reverse(mhh_sol_.task_assignment.begin(), mhh_sol_.task_assignment.end());
+           reflect_vector(mhh_sol_.task_assignment);
         }
         mhh_sol_.n_stations = ub_;
         mhh_sol_.task_to_station_and_load(albp_);
@@ -274,7 +296,7 @@ void MultiHoff::reverse_solve_order() {
     reverse_ = !reverse_;
     back_pass_ = false;
     std::swap(dir_pred_, dir_suc_);
-    std::swap(n_prec_orig_, n_suc_orig_);
+    std::swap(n_pred_orig_, n_suc_orig_);
     std::swap(forw_ranking_, back_ranking_);
     std::swap(no_prec_tasks_, no_suc_tasks_);
     initialize_current_s_assignments();
@@ -293,7 +315,7 @@ ALBPSolution MultiHoff::solve() {
     alpha_ = first_alpha;
     beta_ = first_beta;
     ALBPSolution best_result = solve_one_pass();
-
+    best_result.print();
     if (ub_ != lb_) {
 
         reverse_solve_order();
@@ -307,6 +329,7 @@ ALBPSolution MultiHoff::solve() {
     if (ub_ != lb_) {
         for (float alpha:alpha_sched_) {
             for (float beta:beta_sched_) {
+                std::cout << "alpha: " << alpha << " beta: " << beta << std::endl;
                 if (alpha == first_alpha && beta == first_beta) {
                     continue;
                 }
@@ -314,6 +337,7 @@ ALBPSolution MultiHoff::solve() {
                 alpha_ = alpha;
                 beta_ = beta;
                 ALBPSolution try_forward = solve_one_pass();
+                try_forward.print_loads();
                 if (try_forward.n_stations < best_result.n_stations) {
                     best_result = try_forward;
                     if (ub_ == lb_) {
@@ -346,6 +370,7 @@ ALBPSolution MultiHoff::solve() {
 
 
 
+
 void MultiHoff::add_new_available(std::vector<int> &eligible_tasks, const int task) {
     if (back_pass_) {
         for (const int j : dir_pred_[task]) {
@@ -357,8 +382,8 @@ void MultiHoff::add_new_available(std::vector<int> &eligible_tasks, const int ta
     }
     else {
         for (const int j : dir_suc_[task]) {
-            n_prec_[j] --;
-            if (n_prec_[j] == 0) {
+            n_pred_[j] --;
+            if (n_pred_[j] == 0) {
                 eligible_tasks.push_back(j);
             }
         }
@@ -385,7 +410,7 @@ void MultiHoff::remove_new_available(std::vector<int> &eligible_tasks, const int
     }
     else {
         for (const int j : dir_suc_[task]) {
-            if (n_prec_[j] == 0) {
+            if (n_pred_[j] == 0) {
                 auto it = std::find(eligible_tasks.rbegin(), eligible_tasks.rend(), j);
 
                 if (it != eligible_tasks.rend()) {
@@ -396,7 +421,7 @@ void MultiHoff::remove_new_available(std::vector<int> &eligible_tasks, const int
                 }
 
             }
-            n_prec_[j]++;
+            n_pred_[j]++;
         }
     }
 
@@ -408,17 +433,16 @@ void MultiHoff::gen_load( int depth, int remaining_capacity,const int start, flo
 
         int full_load = 1;
         for(int i=start;i<eligible_tasks.size();i++) {
-            if ((n_attempts_ >= max_attempts_) || (remaining_capacity==0)) return;
+            if ((n_attempts_ >= max_attempts_) || (remaining_capacity<=0)) return;
             if (int task = eligible_tasks[i]; albp_.task_time[task] <= remaining_capacity) {
                 full_load = 0;
                 s_task_assign_.push_back(task);
-                n_prec_[task] = -1;
+                n_pred_[task] = -1;
                 add_new_available(eligible_tasks, task);
                 int sub_remaining_capacity = remaining_capacity - albp_.task_time[task];
                 float sub_cost = cost - albp_.task_time[task];
                 auto random_num = static_cast<float>((dis(rng_)));
                 if (back_pass_) { //Update costs with weighted values alpha_ and beta_. Alpha beta are determined at start of heuristic pass
-
                     sub_cost = sub_cost - alpha_ * static_cast<float>(back_ranking_[task]) - beta_ * static_cast<float>(albp_.pred[task].size())  + gamma_ *random_num * pert_size_ ;
                 }
                 else {
@@ -427,13 +451,16 @@ void MultiHoff::gen_load( int depth, int remaining_capacity,const int start, flo
                 }
                 if (sub_cost < min_cost_) {
                     min_cost_ = sub_cost;
+                    assert(calc_load(s_task_assign_, albp_)<= albp_.C);
+                    assert(albp_.C -sub_remaining_capacity == calc_load(s_task_assign_,albp_));
+
                     best_s_task_assign_ = s_task_assign_;
                 }
                 gen_load(depth+1, sub_remaining_capacity, i+1, sub_cost,eligible_tasks );
 
                 //undo the changes
                 s_task_assign_.pop_back();
-                n_prec_[task] = 0;
+                n_pred_[task] = 0;
                 remove_new_available(eligible_tasks, task);
 
             }
@@ -457,13 +484,11 @@ ALBPSolution mhh_solve(const ALBP &albp, const std::optional<std::vector<float>>
     MultiHoff mhh= MultiHoff(albp, 5000, alpha_schedule, beta_schedule,gamma, task_priorities, seed);
     ALBPSolution best_result =mhh.solve();
 
-
-
-
-
-
     return best_result;
 }
+
+
+
 ALBPSolution mhh_solve_salbp1(const ALBP &albp, const std::optional<std::vector<float>> &alpha_schedule, const std::optional<std::vector<float>> &
                               beta_schedule, const std::optional<float> gamma , const std::optional<std::vector<int>> &task_priorities, const std::optional<unsigned> seed) {
 

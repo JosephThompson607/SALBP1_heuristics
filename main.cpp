@@ -246,8 +246,9 @@ int mhh_test() {
 
     //std::vector<int> test_assignments = {0,1,2,3,4};
     ALBP albp = ALBP::type_1(C, N, task_times, precedence);
-
-    ALBPSolution result =  mhh_solve_salbp1(albp );
+    std::vector<float> alpha = {0.2};
+    std::vector<float> beta = {0.2};
+    ALBPSolution result =  mhh_solve_salbp1(albp, alpha, beta);
      std::cout << "Here is the result" << std::endl;
     result.print();
     // std::cout << "Name: " << albp.name << std::endl;
@@ -655,9 +656,9 @@ int main(int argc, char* argv[]) {
         std::cerr << "Example: " << argv[0] << " problem.alb" << std::endl;
         std::cerr << "Performing default run to test system" << std::endl;
         //default_run();
-       // mhh_test();
+       mhh_test();
         //lb_6_test();
-       vdls_salbp_1_test();
+       //vdls_salbp_1_test();
         //tails_test();
         //priority_methods_salbp_1_test();
         //tabu_test();

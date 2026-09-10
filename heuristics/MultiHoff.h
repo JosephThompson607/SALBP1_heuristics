@@ -23,18 +23,26 @@ class MultiHoff {
                     const std::optional<unsigned int> seed= std::nullopt);
         ALBPSolution solve( );
 
-private:
-    const ALBP& albp_;
-    void add_new_available(std::vector<int> &eligible_tasks,  int task);
-    void remove_new_available(std::vector<int> &eligible_tasks,  int task);
-    void gen_load( int depth, int remaining_time,int start,  float cost, std::vector<int>eligible_tasks) ;
-    std::vector<int> filter_eligible(std::vector<int>& elig);
+    private:
+        const ALBP& albp_;
+        void add_new_available(std::vector<int> &eligible_tasks,  int task);
+        void remove_new_available(std::vector<int> &eligible_tasks,  int task);
+        void gen_load( int depth, int remaining_time,int start,  float cost, std::vector<int>eligible_tasks) ;
+        std::vector<int> filter_eligible(std::vector<int>& elig, bool reverse);
 
         void calc_salbp_1_lbs(int &lb) const;
 
         void initialize_current_s_assignments() ;
-    int one_packing_search(std::vector<int>& elig, int station);
-    bool check_ub() const;
+        int one_packing_search(std::vector<int>& elig, int station);
+
+        int forward_from(int mf, std::vector<int> &eligible_tasks, std::deque<std::vector<int>> &station_assignments, int &station_counter, std
+                         ::vector<int> &ranking);
+
+        int backwards_from(int mf, std::vector<int> &eligible_tasks, int last_station,
+                           std::deque<std::vector<int> > &station_assignments, int &station_counter,
+                           std::vector<int> &ranking);
+
+        bool check_ub() const;
 
     void mark_task_assigned(int task, std::vector<int>& elig, bool remove_old=true);
     ALBPSolution mhh_sol_;
@@ -47,9 +55,9 @@ private:
     std::deque<std::vector<int>> s_forwards_{}; //task assignments in forward direction
     std::deque<std::vector<int>> s_backwards_{}; //task assignments in backwards direction
     std::vector<int> best_s_task_assign_{}; //task assignments to a given station
-    std::vector<int> n_prec_{}; //number of predecessor unassigned. 0 if available, 1 if not
+    std::vector<int> n_pred_{}; //number of predecessor unassigned. 0 if available, 1 if not
     std::vector<int> n_suc_{};
-    std::vector<int> n_prec_orig_{}; //number of predecessor unassigned. 0 if available, 1 if not
+    std::vector<int> n_pred_orig_{}; //number of predecessor unassigned. 0 if available, 1 if not
     std::vector<int> n_suc_orig_{};
     std::map<int,  int> reverse_s_assignment_; //{task:(front, back)} note that back is starting counting from right.That won't cause a bug, won't it?
     std::mt19937 rng_;
