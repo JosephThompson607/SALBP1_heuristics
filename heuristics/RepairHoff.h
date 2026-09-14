@@ -5,7 +5,7 @@
 #ifndef REPAIRHOFF_H
 #define REPAIRHOFF_H
 #include <unordered_set>
-
+#include <unordered_map>
 #include "../albp_solution.h"
 #include "../ALBP.h"
 #include "./MultiHoff.h"
@@ -42,7 +42,16 @@ private:
     ALBPSolution orig_solution_;
     std::pair<int,int> process_stations(const std::vector<std::vector<int>> &station_assignments, const std::unordered_set<int>& parents, const std::unordered_set<int>& children);
 
-   // ALBPSolution solve_one_pass(int left);
+    std::pair<int, int> get_s_bounds(const std::vector<std::vector<int>> &added_edges,
+                                                                 const std::vector<std::vector<int>> &
+                                                                 station_assignments,
+                                                                 const std::string &how);
+
+    ALBP create_subproblem(const std::vector<std::vector<int>> &station_assignments, int left_station, int right_station,
+                           std::vector<int> &tasks,
+                           std::unordered_map<int, int> &task_translation, std::optional<std::vector<int>> &new_priorities);
+
+    // ALBPSolution solve_one_pass(int left);
 
     ALBP sub_albp_;
 };

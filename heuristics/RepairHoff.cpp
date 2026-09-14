@@ -37,71 +37,61 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
 }
 
 
-
-
-
-ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how) {
+std::pair<int, int> RepairHoff::get_s_bounds(const std::vector<std::vector<int>> &added_edges, const std::vector<std::vector<int>> &station_assignments, const std::string& how) {
     std::unordered_set<int> parents;
     std::unordered_set<int> children;
-    std::vector<std::vector<int>> new_precs;
-    orig_solution_.station_assignments = station_assignments;
-    orig_solution_.station_to_task();
-    orig_solution_.station_to_load(albp_);
-    new_precs.reserve(albp_.precedence_relations.size());
-    int lb_6 = calc_salbp_1_bin_lbs(albp_.task_time, albp_.C);
     for (const auto& inner : added_edges) {
         parents.insert(inner[0]-1); //Outside is 1 indexed =/
         children.insert(inner[1]-1);
     }
     int left_station;
     int right_station;
+    std::pair<int,int> s_bounds = process_stations(station_assignments, parents, children);
+
     if (how=="right") {    //Repair everything after the first encountered moved task
-        std::pair<int,int> s_bounds = process_stations(station_assignments, parents, children);
         left_station = s_bounds.first;
         right_station = station_assignments.size()-1;
     }
     else if (how=="left") {    //Repair everything up to the last encountered moved task
-        std::pair<int,int> s_bounds = process_stations(station_assignments, parents, children);
         left_station = 0;
         right_station = s_bounds.second;
     }
     else if (how=="center") { //Make the solution feasible
-        std::pair<int,int> s_bounds = process_stations(station_assignments, parents, children);
         left_station = s_bounds.first;
         right_station = s_bounds.second;
 
     }
-    else if (how=="full") { //recaulate the solution
-        left_station = 0;
-        right_station = station_assignments.size()-1;
-    }
     else {
         throw std::invalid_argument("Unrecognized repair method");
     }
-    assert(left_station >= 0);
-    assert(right_station >= 0);
+    return std::make_pair(left_station, right_station);
+}
+
+
+ALBP RepairHoff::create_subproblem(const std::vector<std::vector<int> > &station_assignments, int left_station,
+                              int right_station,  std::vector<int> &tasks,
+                               std::unordered_map<int, int> &task_translation,
+                              std::optional<std::vector<int> > &new_priorities
+                              ) {
     std::vector<int> task_times;
-    std::vector<std::vector<int>> edges;
-    std::vector<int>tasks;
-    std::unordered_map<int, int> task_translation;
+    std::vector<std::vector<int>> new_precs;
+    new_precs.reserve(albp_.precedence_relations.size());
+
     int task_ind = 0;
-    std::optional<std::vector<int>> new_priorities;
-    if (task_priorities_.has_value()) new_priorities.emplace();
     for (size_t i = left_station; i<= right_station; ++i) {
-            for (int task : station_assignments[i]) {
-                tasks.push_back(task);
-                task_translation.insert({task, task_ind});
-                task_times.push_back(albp_.task_time[task]);
+        for (int task : station_assignments[i]) {
+            tasks.push_back(task);
+            task_translation.insert({task, task_ind});
+            task_times.push_back(albp_.task_time[task]);
 
-                if (task_priorities_.has_value() && !task_priorities_.value().empty()) {
-                    new_priorities.value().push_back(task_priorities_.value()[task]);
-                }
-
-                task_ind++;
+            if (task_priorities_.has_value() && !task_priorities_.value().empty()) {
+                new_priorities.value().push_back(task_priorities_.value()[task]);
             }
+
+            task_ind++;
         }
 
-
+    }
     std::unordered_set<int> allowed_set(tasks.begin(), tasks.end());
 
     for (PrecedenceRelation prec:albp_.precedence_relations) {
@@ -115,11 +105,43 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
             assert(child== tasks[child_ind] );
             assert(parent == tasks[parent_ind] );
         }
-        else {
-        }
-
     }
-    sub_albp_ = ALBP::type_1(albp_.C, task_times.size(), task_times, new_precs, false, false, false, false);
+    ALBP subproblem = ALBP::type_1(albp_.C, task_times.size(), task_times, new_precs, false, false, false, false);
+    return subproblem;
+}
+
+ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how) {
+    //If full, immediately re-solve the entire problem
+    if (how == "full") {
+        MultiHoff solver(  albp_,
+         max_attempts_,
+         alpha_sched_,
+         beta_sched_,
+         gamma_,
+         task_priorities_,
+         seed_);
+        return solver.solve();
+    }
+    //Set up initial solution
+    orig_solution_.station_assignments = station_assignments;
+    orig_solution_.station_to_task();
+    orig_solution_.station_to_load(albp_);
+    int lb_6 = calc_salbp_1_bin_lbs(albp_.task_time, albp_.C);
+
+    //Gets the correct bounds for the stations
+    std::pair<int,int> s_bounds = get_s_bounds(added_edges, station_assignments, how);
+    int left_station = s_bounds.first;
+    int right_station = s_bounds.second;
+    assert( left_station >= 0);
+    assert(right_station >= 0);
+    //Create the subproblem to be solved
+    std::vector<int>tasks;
+    std::unordered_map<int, int> task_translation;
+    std::optional<std::vector<int>> new_priorities;
+    if (task_priorities_.has_value()) new_priorities.emplace();
+    sub_albp_ = create_subproblem(station_assignments, left_station, right_station, tasks, task_translation, new_priorities);
+
+    //Solve subproblem
     MultiHoff solver(  sub_albp_,
            max_attempts_,
            alpha_sched_,
@@ -127,7 +149,6 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
            gamma_,
            new_priorities,
            seed_);
-
     ALBPSolution  intermediate = solver.solve();
 
     //updates the original solution

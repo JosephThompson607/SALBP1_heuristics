@@ -604,14 +604,23 @@ def test_rep_mhh(salbp, C, t_times, precs):
     )
     albp.add_precedence_relation(new_prec)
     print("original station assignments", original.station_assignments)
-    for how in ("left", "center", "right"):
-        result = rep_mhh_call(
-            salbp,
-            albp,
-            original.station_assignments,
-            [new_prec],
-            how,
-        )
+    for how in ("left", "center", "right", "full"):
+        if how=="full":
+            result = rep_mhh_call(
+                salbp,
+                albp,
+                [],
+                [],
+                how,
+            )
+        else:
+            result = rep_mhh_call(
+                salbp,
+                albp,
+                original.station_assignments,
+                [new_prec],
+                how,
+            )
 
         assert result is not None, f"Repair failed for direction '{how}'"
         assert sum(result.loads) == sum(t_times), (
