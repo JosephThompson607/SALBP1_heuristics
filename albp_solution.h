@@ -40,7 +40,7 @@ public:
 
     [[nodiscard]] int get_n_tasks() const { return n_tasks; }  // Read-only access
     //utility functions
-
+    void print_task_assignment() const;
     void print() const;
     void print_loads() const;
     void task_to_station();
@@ -62,6 +62,7 @@ public:
     void task_ranking_to_ranking();
 
 };
+int calc_load(const std::vector<int>&s_assign,const ALBP& albp) ;
 std::pair<int, std::vector<int>>  get_critical_stations( std::vector<int> loads);
 
 #endif

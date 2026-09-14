@@ -14,6 +14,7 @@
 #include "heuristics/tabu.h"
 #include <pybind11/chrono.h>
 
+#include "RepairHoff.h"
 #include "tabu.h"
 namespace py = pybind11;
 
@@ -51,6 +52,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                         py::arg("reverse") = false,
                         py::arg("light")=false,
                         py::arg("is_topo")=false,
+                        py::arg("is_one_indexed")=true,
                         "Factory constructor for type_1, ")
 
             .def_static("type_2", &ALBP::type_2,
@@ -58,6 +60,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                         py::arg("reverse"),
                         py::arg("light"),
                         py::arg("is_topo"),
+                        py::arg("is_one_indexed")=true,
                         "Factory constructor for type_2")
 
             .def("print", &ALBP::print)
@@ -662,6 +665,59 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                                                     ALBPSolution
                                                       The solved ALBP solution
                                                     )pbdoc");
+    m.def("rep_mhh_salbp1",
+      &rep_mhh_salbp1,
+      R"pbdoc(
+          Repair an infeasible SALBP-1 solution.
+
+          Parameters:
+          -----------
+          albp : ALBP
+              The ALBP instance graph.
+
+          station_assignments : list of list of int
+              Station assignments from the infeasible solution. Each inner
+              vector contains the tasks assigned to a station.
+
+          added_edges : list of list of int
+              Precedence edges that cause the solution to be infeasible.
+
+          how : str
+              Direction in which the new solution is reconstructed.
+
+          max_attempts : int
+              Maximum number of repair attempts.
+
+          alpha_schedule : list of float, optional
+              Schedule of alpha weights used during reconstruction.
+
+          beta_schedule : list of float, optional
+              Schedule of beta weights used during reconstruction.
+
+          gamma : float, optional
+              Strength of the random perturbation used during reconstruction.
+
+          task_priorities : list of int, optional
+              Task priority ranking used during reconstruction.
+
+          seed : int, optional
+              Seed for the random number generator.
+
+          Returns:
+          --------
+          ALBPSolution
+              A feasible repaired SALBP-1 solution.
+      )pbdoc",
+      py::arg("albp"),
+      py::arg("station_assignments"),
+      py::arg("added_edges"),
+      py::arg("how"),
+      py::arg("max_attempts"),
+      py::arg("alpha_schedule") = std::nullopt,
+      py::arg("beta_schedule") = std::nullopt,
+      py::arg("gamma") = std::nullopt,
+      py::arg("task_priorities") = std::nullopt,
+      py::arg("seed") = std::nullopt);
 
     m.def("tabu_solve_salbp1",
           [](int C, int N,

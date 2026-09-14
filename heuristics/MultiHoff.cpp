@@ -11,7 +11,6 @@
 #include <map>
 #include <optional>
 #include <numeric>
-#define NDEBUG
 #include <cassert>
 
 MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
@@ -49,7 +48,7 @@ MultiHoff::MultiHoff(const ALBP& albp, const int max_attempts,
 
     s_task_assign_.reserve(albp.N);
 
-    if (!rankings){
+    if (!rankings || rankings.value().empty()){
     forw_ranking_ = pw_ranking(albp_) ; //Ranking of tasks in forward/backward direction for hoffman
     back_ranking_ = rpw_ranking(albp_) ;
         }
@@ -133,13 +132,7 @@ void MultiHoff::mark_task_assigned(const int task, std::vector<int>& elig, const
     remaining_task_times_[task] = 0;
 }
 
-int calc_load(const std::vector<int>&s_assign,const ALBP& albp) {
-    int total=0;
-    for (int task:s_assign) {
-        total+= albp.task_time[task];
-    }
-    return total;
-}
+
 int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
     s_task_assign_.clear();
     best_s_task_assign_.clear();
@@ -256,18 +249,14 @@ ALBPSolution MultiHoff::solve_one_pass() {
         if (n_stations < ub_ && last_station != -1) {
             improved = true;
             ub_ = n_stations;
-            std::cout <<"NOW Forwards"<< std::endl;
             for (int s = 0; s < forward_station_; s++) {
                 for (const int task : s_forwards_[s]) {
-                    std::cout << "station " << s+1 << " task " << task+1 << std::endl;
                     mhh_sol_.task_assignment[task] = s;
                 }
             }
-            std::cout <<"NOW BACKWARDS"<< std::endl;
             for (int s = 0; s<backward_station_; s++) {
                 for (const int task : s_backwards_[s]) {
                     mhh_sol_.task_assignment[task] = forward_station_ + s;
-                    std::cout << "station " << forward_station_ + s +1 << " task " << task+1 << std::endl;
                 }
             }
         }
@@ -315,7 +304,6 @@ ALBPSolution MultiHoff::solve() {
     alpha_ = first_alpha;
     beta_ = first_beta;
     ALBPSolution best_result = solve_one_pass();
-    best_result.print();
     if (ub_ != lb_) {
 
         reverse_solve_order();
@@ -337,7 +325,6 @@ ALBPSolution MultiHoff::solve() {
                 alpha_ = alpha;
                 beta_ = beta;
                 ALBPSolution try_forward = solve_one_pass();
-                try_forward.print_loads();
                 if (try_forward.n_stations < best_result.n_stations) {
                     best_result = try_forward;
                     if (ub_ == lb_) {

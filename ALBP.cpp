@@ -85,27 +85,25 @@ std::vector<std::vector<int>> all_predecessors(const std::vector<int>& t_close_m
 void ALBP::add_relation(int u, int v, bool reverse) {
     if (reverse) std::swap(u, v);
 
-    if (u < 1 || u > N || v < 1 || v > N) {
+    if (u < 0 || u > N-1 || v < 0 || v > N-1) {
         std::cerr << "Invalid precedence pair (" << u << ", " << v
-                  << "). Assuming 1-indexed.\n";
+                  << "). Assuming 0-indexed.\n";
         return;
     }
 
     precedence_relations.push_back({u, v});
-    prec_mat[(u - 1) * N + (v - 1)] = 1;
-    dir_suc[u - 1].push_back(v - 1);
-    dir_pred[v - 1].push_back(u - 1);
+    prec_mat[(u ) * N + (v )] = 1;
+    dir_suc[u ].push_back(v );
+    dir_pred[v ].push_back(u );
 }
 
-void ALBP::initialize_precedence(int C_, int S_, int N_,
+void ALBP::initialize_precedence(
                                  const std::vector<int>& task_times_,
                                  bool reverse) {
-    if (task_times_.size() != static_cast<size_t>(N_)) {
+    if (task_times_.size() != static_cast<size_t>(N)) {
         throw std::invalid_argument("task_times size does not match N");
     }
-    C = C_;
-    N = N_;
-    S = S_;
+
     task_time = task_times_;
     name = "constructed_from_data";
 
@@ -123,12 +121,19 @@ void ALBP::initialize_precedence(int C_, int S_, int N_,
 ALBP::ALBP(const int C_, const int S_, const int N_,
            const std::vector<int>& task_times_,
            const std::vector<std::vector<int>>& raw_precedence,
-           bool reverse, bool light, bool is_topological) {
-    initialize_precedence(C_, S_, N_, task_times_, reverse);
+           bool reverse, bool light, bool is_topological, bool is_one_indexed):    C(C_), N(N_), S(S_)
+            {
+    initialize_precedence( task_times_, reverse);
     total_time = std::accumulate(task_times_.begin(), task_times_.end(), 0);
     for (const auto& pair : raw_precedence) {
-        if (pair.size() < 2) continue;
-        add_relation(pair[0], pair[1], reverse);
+        if (pair.size() < 2) {throw std::invalid_argument("precedence size is less than 2");};
+        int parent = pair[0];
+        int child = pair[1];
+        if (is_one_indexed) {
+            parent --;
+            child --;
+        }
+        add_relation(parent, child, reverse);
     }
     if (!light) { // Can bypass calculating transitive closure if desired (will break some heuristics)
         calc_fast_trans_closure(is_topological);
@@ -138,10 +143,12 @@ ALBP::ALBP(const int C_, const int S_, const int N_,
 ALBP::ALBP(int C_, int S_, int N_,
            const std::vector<int>& task_times_,
            const std::vector<PrecedenceRelation>& raw_precedence,
-           bool reverse, bool light, bool is_topological) {
-    initialize_precedence(C_, S_, N_, task_times_, reverse);
+           bool reverse, bool light, bool is_topological) :  C(C_), N(N_), S(S_) {
+    initialize_precedence( task_times_, reverse);
     total_time = std::accumulate(task_times_.begin(), task_times_.end(), 0);
+
     for (const auto& rel : raw_precedence) {
+
         add_relation(rel.parent, rel.child, reverse);
     }
     if (!light) {
@@ -149,20 +156,21 @@ ALBP::ALBP(int C_, int S_, int N_,
     }
 }
 
-ALBP ALBP::type_2(int S_, int N_, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, const bool reverse, bool light, bool is_topological) {
+ALBP ALBP::type_2(int S_, int N_, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, const bool reverse, const bool light, const bool is_topological, const bool is_one_indexed) {
     int C_ub = std::accumulate(task_times_.begin(), task_times_.end(), 0);
-   return ALBP(C_ub, S_, N_, task_times_, raw_precedence, reverse , light, is_topological);
+   return ALBP(C_ub, S_, N_, task_times_, raw_precedence, reverse , light, is_topological, is_one_indexed);
 }
 
-ALBP ALBP::type_1(int C_, int N_, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, const bool reverse, bool light, bool is_topological) {
+ALBP ALBP::type_1(int C_, int N_, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, const bool reverse, const bool light, const bool is_topological, bool
+                  is_one_indexed) {
     int S_ub = N_;
-    return ALBP(C_, S_ub, N_, task_times_, raw_precedence, reverse, light, is_topological);
+    return ALBP(C_, S_ub, N_, task_times_, raw_precedence, reverse, light, is_topological, is_one_indexed);
 }
 
 
 
 //print function
-void ALBP::print(bool print_prec_mat = false) {
+void ALBP::print(bool print_prec_mat ) const {
     std::cout << "ALBP Name: " << name << std::endl;
     std::cout << "Cycle time (SALBP-1 only: " << C << std::endl;
     std::cout << "Number of stations (SALBP-2 only): " << S << std::endl;
@@ -251,17 +259,18 @@ void ALBP::add_precedence_relation(std::vector<int> prec) {
     //assuming one indexed precedence relation
     int parent = prec[0]-1;
     int child = prec[1]-1;
-    add_relation(parent+1, child+1, false);
+    add_relation(parent, child, false);
     //Get rows that need to be updated for the matrix
     std::vector<int> upstream = pred[parent];
     upstream.push_back(parent);
-
     std::vector<int> downstream = suc[child];
     downstream.push_back(child);
-
     for (int a : upstream) {
         for (int b : downstream) {
-            t_close_mat[a * N + b] = 1;
+            if (a!=b) {
+                t_close_mat[a * N + b] = 1;
+            }
+
         }
     }
     update_prec_and_suc(downstream, upstream);
@@ -401,7 +410,7 @@ bool ALBP::loadFromFile(const std::string& filename) {
             char comma;
             if ((iss >> u >> comma >> v) && comma == ',') {
                 if (u >= 1 && u <= N && v >= 1 && v <= N) {
-                    precedence_relations.push_back({u, v});
+                    precedence_relations.push_back({u-1, v-1});
                     prec_mat[(u - 1) * N + (v - 1)] = 1;
                     dir_suc[u - 1].push_back(v-1);
                     dir_pred[v-1].push_back(u-1);

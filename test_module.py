@@ -36,7 +36,7 @@ def import_salbp():
     print(f"Python path: {sys.path[:3]}...")
     print(f"current interpreter: {sys.executable}")
 
-    build_dir = "cmake-build-python_interface/"
+    build_dir = "cmake-build-debug/"
     print(f"Looking for module in: {build_dir}")
     print(f"Directory exists: {os.path.exists(build_dir)}")
     if os.path.exists(build_dir):
@@ -567,6 +567,69 @@ def test_gamma_mhh(salbp, C, t_times, precs):
     # print(f"here are the station assignments {results1.task_assignment} , {results2.task_assignment} , {results3.task_assignment}")
     # print(f"here are the station loads {results1.loads} , {results2.loads} , {results3.loads}")
 
+def rep_mhh_call(salbp, albp, station_assignments, added_edges, how,
+                 max_attempts=1000, alpha=None, beta=None, gamma=None,
+                 ranking=None, seed=None):
+    """Repair an infeasible SALBP-1 solution using MHH."""
+    return salbp.rep_mhh_salbp1(
+            albp=albp,
+            station_assignments=station_assignments,
+            added_edges=added_edges,
+            how=how,
+            max_attempts=max_attempts,
+            alpha_schedule=alpha,
+            beta_schedule=beta,
+            gamma=gamma,
+            task_priorities=ranking,
+            seed=seed,
+        )
+
+
+def test_rep_mhh(salbp, C, t_times, precs):
+    start = time.time()
+
+    # Generate a feasible solution first.
+    original = priority_type1_call(salbp, C, t_times, precs)[0]
+    assert original is not None, "MHH failed to generate initial solution"
+    assert sum(original.loads) == sum(t_times), "Initial solution has incorrect loads"
+    assert max(original.loads) <= C, "Initial solution exceeds cycle time"
+
+    # Add a precedence edge that makes the existing solution infeasible.
+    new_prec = [14, 18]
+    albp = salbp.ALBP.type_1(
+        C=C,
+        N=len(t_times),
+        task_times=t_times,
+        raw_precedence=precs,
+    )
+    albp.add_precedence_relation(new_prec)
+    print("original station assignments", original.station_assignments)
+    for how in ("left", "center", "right"):
+        result = rep_mhh_call(
+            salbp,
+            albp,
+            original.station_assignments,
+            [new_prec],
+            how,
+        )
+
+        assert result is not None, f"Repair failed for direction '{how}'"
+        assert sum(result.loads) == sum(t_times), (
+            f"Task times mismatched with loads for direction '{how}'"
+        )
+        assert (result.n_violations==0 ), "Precedence constraints are violated"
+        assert max(result.loads) <= C, (
+            f"Max load greater than cycle time for direction '{how}': {result.loads}"
+        )
+        assert len(result.task_assignment) == len(t_times), (
+            f"Incorrect task assignment length for direction '{how}'"
+        )
+
+        print(
+            f"✅ Created repaired ALBPSolutions using rep_mhh {how} {result.n_stations} \
+            in {time.time() - start} seconds")
+
+
 def test_priority_change_mhh(salbp, C, t_times, precs):
     start = time.time()
     results1 = poke_mhh(salbp, cycle_time=C, task_times_list=t_times, precedence_list=precs)
@@ -685,6 +748,7 @@ def main():
         ("alpha beta mhh", lambda: test_alpha_beta_mhh(salbp, C, t_times, precs)),
         ("gamma mhh", lambda: test_gamma_mhh(salbp, C, t_times, precs)),
         ("priority change mhh", lambda: test_priority_change_mhh(salbp, C, t_times, precs)),
+        ("rep_mhh", lambda: test_rep_mhh(salbp, C, t_times, precs)),
         ("vdls", lambda: test_vdls(salbp, C, t_times, precs)),
         ("vdls_type2", lambda: test_vdls_type2(salbp, t_times, precs)),
 

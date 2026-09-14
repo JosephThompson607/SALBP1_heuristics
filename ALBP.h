@@ -28,9 +28,9 @@ struct PathStats {
 
 struct ALBP{
     std::string name; //Name of the ALBPß
-    int C; //Cycle time (for SALBP-1)
-    int N; //Number of tasks
-    int S; //Number of stations (For SALBP-2)
+    int C{}; //Cycle time (for SALBP-1)
+    int N{}; //Number of tasks
+    int S{}; //Number of stations (For SALBP-2)
     int total_time;
     std::vector<int> task_time; //Task times
     std::vector<int> prec_mat; //Precedence matrix
@@ -43,13 +43,13 @@ struct ALBP{
     std::vector<int> task_assignment; //Original task assignment (if applicable)
 
 
-
     ALBP() = default;
     explicit ALBP(const std::string& filename) { loadFromFile(filename); }
-    static ALBP type_1(int C, int N, const std::vector<int>& task_times, const std::vector<std::vector<int>>& raw_precedence, bool reverse=false, bool light=false, bool is_topological=false);
-    static ALBP type_2(int S, int N, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, bool reverse=false, bool light=false, bool is_topological=false);
+    static ALBP type_1(int C, int N, const std::vector<int>& task_times, const std::vector<std::vector<int>>& raw_precedence, bool reverse=false, bool light=false, bool is_topological=false, bool
+                       is_one_indexed = true);
+    static ALBP type_2(int S, int N, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, bool reverse=false, bool light=false, bool is_topological=false, bool is_one_indexed = true);
     [[nodiscard]] ALBP reverse() const;
-    void print(bool print_prec_mat);
+    void print(bool print_prec_mat= false) const;
     void add_precedence_relation(std::vector<int> prec);
   //  void add_precedence_relations(const std::vector<std::vector<int>> &precs);
 
@@ -63,13 +63,13 @@ struct ALBP{
         ALBP(int C_, int S_, int N_,
             const std::vector<int>& task_times_,
             const std::vector<std::vector<int>>& raw_precedence,
-            bool reverse, bool light, bool is_topological);
+            bool reverse, bool light, bool is_topological, bool is_one_indexed);
 
         ALBP(int C_, int S_, int N_,
              const std::vector<int>& task_times_,
              const std::vector<PrecedenceRelation>& raw_precedence,
              bool reverse, bool light, bool is_topological);
-        void initialize_precedence(int C_, int S_, int N_,
+        void initialize_precedence(
                            const std::vector<int>& task_times_,
                            bool reverse);
         void update_prec_and_suc(const std::vector<int>& new_pred, const std::vector<int>& new_suc);
@@ -79,7 +79,6 @@ struct ALBP{
 
 };
  std::vector<int>fast_transitive_closure(const std::vector<std::vector<int>>& dir_preds, const std::vector<std::vector<int>>& dir_sucs, const std::vector<int>& prec_mat,  bool alreadyTopo = true);
-
 
 std::vector<int>get_topo_sort(const std::vector<std::vector<int>>& dir_preds, const std::vector<std::vector<int>>& dir_sucs);
 

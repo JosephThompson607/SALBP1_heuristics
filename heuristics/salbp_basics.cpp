@@ -965,8 +965,8 @@ return   static_cast<double>(albp.suc[a].size())/ (ub[a]-lb[a])  < static_cast<d
 int count_violations(const ALBP&albp, const std::vector<int>& task_assignment) {
     int violations = 0;
     for (const auto& rel : albp.precedence_relations) {
-        int parent = rel.parent - 1; // Convert to 0-based index
-        int child = rel.child - 1;   // Convert to 0-based index
+        int parent = rel.parent;
+        int child = rel.child;
         if (task_assignment[parent] > task_assignment[child]) {
             violations++;
         }

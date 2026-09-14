@@ -23,17 +23,26 @@
 
 
  void ALBPSolution::print() const {
-    std::cout << "ALBP Solution with S: " << n_stations << "  C: " <<cycle_time << " found with: " << method<<std::endl;
-    for (int i = 0; i < n_stations; ++i) {
-        std::cout << "Station " << i + 1 <<" load "<< loads[i] << " assigned tasks : ";
-        for (int j : station_assignments[i]) {
-            std::cout << j + 1 << " ";
-        }
-        std::cout << std::endl;
-    }
+     std::cout << "ALBP Solution with S: " << n_stations << "  C: " <<cycle_time << " found with: " << method<<std::endl;
+     for (int i = 0; i < n_stations; ++i) {
+         std::cout << "Station " << i + 1 <<" load "<< loads[i] << " assigned tasks : ";
+         for (int j : station_assignments[i]) {
+             std::cout << j + 1 << " ";
+         }
+         std::cout << std::endl;
+     }
+ }
+void ALBPSolution::print_task_assignment() const {
+     std::cout << "ALBP Solution with S: " << n_stations << "  C: " <<cycle_time << " found with: " << method<<std::endl;
+     std::cout << "(task, station ) ";
+     for (int i = 0; i < task_assignment.size(); ++i) {
+         std::cout << "(" << i +1 <<" , "<< task_assignment[i] +1 << "), ";
+     }
+     std::cout << std::endl;
 
 
-}
+ }
+
 
 
 
@@ -63,6 +72,13 @@ void ALBPSolution::reverse()  {
      }
 
 
+ }
+int calc_load(const std::vector<int>&s_assign,const ALBP& albp) {
+     int total=0;
+     for (int task:s_assign) {
+         total+= albp.task_time[task];
+     }
+     return total;
  }
 
 std::pair<int, std::vector<int>> get_critical_stations( std::vector<int> loads) {
@@ -103,7 +119,11 @@ void ALBPSolution::task_to_station_and_load(const ALBP &albp) {
          station_assignments[station].push_back(i);
          if (loads[station] > cycle_time) {
              cycle_time = loads[station];
+
              critical_stations = {station};
+             if (cycle_time > albp.C) {
+                 std::cout << cycle_time <<" OVERLOAD AT"<< station << std::endl;
+             }
          }
          else if (loads[station] == cycle_time) {
              critical_stations.push_back(station);
@@ -217,6 +237,7 @@ void ALBPSolution::station_to_task(){
     // Convert station assignment to task assignment
     task_assignment.clear();
     task_assignment.resize(n_tasks, -1);
+     n_stations = station_assignments.size();
     for (int i = 0; i < n_stations; ++i) {
         for (int j = 0; j < station_assignments[i].size(); ++j) {
             int task = station_assignments[i][j];
