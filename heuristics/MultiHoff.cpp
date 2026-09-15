@@ -246,7 +246,7 @@ ALBPSolution MultiHoff::solve_one_pass() {
         last_station = backwards_from(mf, eligible_tasks_backward, last_station, s_backwards_, backward_station_, back_ranking_);
         int n_stations = forward_station_ + backward_station_;
 
-        if (n_stations < ub_ && last_station != -1) {
+        if ((n_stations < ub_ && last_station != -1)|| (mhh_sol_.task_assignment[0]==-1)) {
             improved = true;
             ub_ = n_stations;
             for (int s = 0; s < forward_station_; s++) {

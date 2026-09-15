@@ -337,7 +337,7 @@ std::vector<std::vector<int>> precedence = {
     {75,78},{79,80},{79,81},{80,82},{80,83},{80,84},{80,85},{81,84},{81,98},{82,87},
     {82,89},{82,97},{83,86},{83,96},{84,87},{84,88},{85,86},{85,88},{86,92},{86,99},
     {87,94},{87,96},{88,90},{88,91},{88,93},{89,95},{89,99},{90,97},{92,97},{92,98},
-    {93,99},{95,96},{29,55}
+    {93,99},{95,96}, {29, 55}
     };
     int C = 1000;
     int N = 100;
@@ -350,11 +350,11 @@ std::vector<std::vector<int>> precedence = {
     result.print();
     //Assuming that MHH is functioning deterministically
     // std::vector<int> new_prec = {14,18};
-    std::vector<int> new_prec = {30, 56};
+    std::vector<int> new_prec = {79, 88};
     albp.add_precedence_relation(new_prec);
-    ALBPSolution res2 = rep_mhh_salbp1(albp, result.station_assignments, {new_prec}, "left", 5000, std::nullopt, std::nullopt, 0.3);
-    std::cout << "Left result" << std::endl;
-    res2.print();
+    // ALBPSolution res2 = rep_mhh_salbp1(albp, result.station_assignments, {new_prec}, "left", 5000, std::nullopt, std::nullopt, 0.3);
+    // std::cout << "Left result" << std::endl;
+    // res2.print();
     ALBPSolution res3 = rep_mhh_salbp1(albp, result.station_assignments, {new_prec}, "center");
     std::cout << "Center result" << std::endl;
     res3.print();

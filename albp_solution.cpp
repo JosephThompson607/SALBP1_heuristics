@@ -19,7 +19,7 @@
 #include <functional>
 #include <map>
 #include <stdexcept>  // For std::runtime_error
-
+#include <cassert>
 
 
  void ALBPSolution::print() const {
@@ -237,15 +237,17 @@ void ALBPSolution::station_to_task(){
     // Convert station assignment to task assignment
     task_assignment.clear();
     task_assignment.resize(n_tasks, -1);
-     n_stations = station_assignments.size();
-    for (int i = 0; i < n_stations; ++i) {
+
+    for (int i = 0; i < station_assignments.size(); ++i) {
         for (int j = 0; j < station_assignments[i].size(); ++j) {
             int task = station_assignments[i][j];
-            if (task >= 0 && task < n_tasks) {
-                task_assignment[task] = i;
-            }
+            assert(task >= 0 && task < n_tasks);
+            task_assignment[task] = i;
         }
     }
+     for (int t : task_assignment) {
+         assert(task_assignment[t] >= 0 && task_assignment[t] < n_tasks);
+     }
 }
 
 void ALBPSolution::station_to_ranking(bool sort_by_task) {

@@ -34,6 +34,8 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
         }
     }
     assert(left_station < right_station);
+    assert( left_station >= 0);
+    assert(right_station >= 0);
     return std::make_pair(left_station, right_station);
 }
 
@@ -88,10 +90,8 @@ ALBP RepairHoff::create_subproblem(const std::vector<std::vector<int> > &station
             if (task_priorities_.has_value() && !task_priorities_.value().empty()) {
                 new_priorities.value().push_back(task_priorities_.value()[task]);
             }
-
             task_ind++;
         }
-
     }
     std::unordered_set<int> allowed_set(tasks.begin(), tasks.end());
 
@@ -108,6 +108,7 @@ ALBP RepairHoff::create_subproblem(const std::vector<std::vector<int> > &station
         }
     }
     ALBP subproblem = ALBP::type_1(albp_.C, task_times.size(), task_times, new_precs, false, false, false, false);
+
     return subproblem;
 }
 
@@ -125,6 +126,7 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
     }
     //Set up initial solution
     orig_solution_.station_assignments = station_assignments;
+    orig_solution_.n_stations = station_assignments.size();
     orig_solution_.station_to_task();
     orig_solution_.station_to_load(albp_);
     int lb_6 = calc_salbp_1_bin_lbs(albp_.task_time, albp_.C);
@@ -133,15 +135,13 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
     std::pair<int,int> s_bounds = get_s_bounds(added_edges, station_assignments, how);
     int left_station = s_bounds.first;
     int right_station = s_bounds.second;
-    assert( left_station >= 0);
-    assert(right_station >= 0);
+
     //Create the subproblem to be solved
      std::vector<int>tasks;
     std::unordered_map<int, int> task_translation;
     std::optional<std::vector<int>> new_priorities;
     if (task_priorities_.has_value()) new_priorities.emplace();
     sub_albp_ = create_subproblem(station_assignments, left_station, right_station, tasks, task_translation, new_priorities);
-
     //Solve subproblem
     MultiHoff solver(  sub_albp_,
            max_attempts_,
@@ -151,7 +151,6 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
            new_priorities,
            seed_);
     ALBPSolution  intermediate = solver.solve();
-
     //updates the original solution
     //Change in stations is restricted to the subproblem, delta is negative in improvement, positive in deterioration
     int delta =   intermediate.n_stations -(right_station - left_station +1 );
