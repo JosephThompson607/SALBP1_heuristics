@@ -317,7 +317,6 @@ ALBPSolution MultiHoff::solve() {
     if (ub_ != lb_) {
         for (float alpha:alpha_sched_) {
             for (float beta:beta_sched_) {
-                std::cout << "alpha: " << alpha << " beta: " << beta << std::endl;
                 if (alpha == first_alpha && beta == first_beta) {
                     continue;
                 }
