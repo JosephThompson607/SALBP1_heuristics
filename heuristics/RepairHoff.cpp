@@ -28,11 +28,12 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
             if (children.contains(task) && s < left_station) {
                 left_station = s;
             }
-            if (parents.contains(task)   && s > right_station) {
+            if (parents.contains(task)  && s > right_station) {
                 right_station = s;
             }
         }
     }
+    assert(left_station < right_station);
     return std::make_pair(left_station, right_station);
 }
 
@@ -135,7 +136,7 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
     assert( left_station >= 0);
     assert(right_station >= 0);
     //Create the subproblem to be solved
-    std::vector<int>tasks;
+     std::vector<int>tasks;
     std::unordered_map<int, int> task_translation;
     std::optional<std::vector<int>> new_priorities;
     if (task_priorities_.has_value()) new_priorities.emplace();

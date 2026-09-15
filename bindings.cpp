@@ -686,7 +686,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
               Direction in which the new solution is reconstructed.
 
           max_attempts : int
-              Maximum number of repair attempts.
+              Maximum number of attempts to build a station load.
 
           alpha_schedule : list of float, optional
               Schedule of alpha weights used during reconstruction.
