@@ -33,6 +33,9 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
             }
         }
     }
+    if (left_station == right_station) {
+        left_station = 0;
+    }
     assert(left_station < right_station);
     assert( left_station >= 0);
     assert(right_station >= 0);
