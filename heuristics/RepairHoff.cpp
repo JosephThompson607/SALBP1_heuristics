@@ -33,6 +33,9 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
             }
         }
     }
+    if (left_station > right_station) {
+        throw std::invalid_argument("Left station is greater than right station");
+    }
     if (left_station == right_station) {//In degenerate case, re-solve from station 1
         left_station = 0;
     }
