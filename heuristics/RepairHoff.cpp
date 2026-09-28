@@ -36,8 +36,14 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
     if (left_station > right_station) {
         throw std::invalid_argument("Left station is greater than right station");
     }
-    if (left_station == right_station) {//In degenerate case, re-solve from station 1
-        left_station = 0;
+    if (left_station == right_station) {
+        //In degenerate case, re-solve from station 1
+        if (left_station != 0) {
+            left_station = 0;
+        }
+        else if(right_station!= station_assignments.size()-1) {
+            right_station = station_assignments.size()-1;
+        }
     }
     assert(left_station < right_station);
     assert( left_station >= 0);
@@ -136,6 +142,9 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
     orig_solution_.station_to_task();
     orig_solution_.station_to_load(albp_);
     int lb_6 = calc_salbp_1_bin_lbs(albp_.task_time, albp_.C);
+    if (orig_solution_.n_stations == lb_6) {
+        return orig_solution_;
+    }
 
     //Gets the correct bounds for the stations
     std::pair<int,int> s_bounds = get_s_bounds(added_edges, station_assignments, how);
