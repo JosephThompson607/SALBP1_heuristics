@@ -38,11 +38,11 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
     }
     if (left_station == right_station) {
         //In degenerate case, re-solve from station 1
-        if (left_station != 0) {
-            left_station = 0;
+        if (left_station > 0) {
+            left_station -= 1;
         }
-        else if(right_station!= station_assignments.size()-1) {
-            right_station = station_assignments.size()-1;
+        else if(right_station < station_assignments.size()-1) {
+            right_station += 1;
         }
     }
     assert(left_station < right_station);
