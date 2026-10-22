@@ -10,9 +10,11 @@
 int calc_salbp_1_bin_lbs(const std::vector<int> & task_times, int C);
 int calc_salbp_1_lbs(const ALBP& albp);
 int calc_lb_1(const std::vector<int>& task_time, int C);
-int calc_lb_2(const std::vector<int>& task_time, int C);
+
+float calc_lb_2(const std::vector<int> &task_time, int C);
 int calc_lb_3(const std::vector<int>& task_time, int C);
 int calc_lb_6(const std::vector<int>& task_time, int C);
+std::tuple<int, int, int, bool, float> calc_lb_6_tup(const std::vector<int>& task_times,int C);
 int calc_salbp_2_lbs(const std::vector<int>& task_time, int S);
 int calc_salbp_2_ub(const std::vector<int>& task_time, int S);
 std::vector<int>  get_positional_weight(const ALBP &albp);
@@ -24,7 +26,7 @@ std::vector<int> pw_ranking(const ALBP &albp);
 std::vector<int> rpw_ranking(const ALBP &albp);
 std::vector<int> suc_over_slack_ranking(const ALBP&albp);
 std::vector<float> get_heads(const ALBP& albp, bool alreadyTopo);
-
+std::vector<int> sternatz_ranking(const ALBP&albp, bool reverse) ;
 std::vector<float> get_tails(const ALBP& albp, bool alreadyTopo);
 void shallow_task_assignment( const ALBP&albp,  ALBPSolution& solution);
 void sort_by_ranking(std::vector<int>& items, const std::vector<int>& ranking);

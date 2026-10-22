@@ -11,6 +11,7 @@ Run directly:
     python test_salbp_heuristics.py
 """
 import importlib.util
+import math
 import os
 import sys
 import time
@@ -466,6 +467,7 @@ def test_deepcopy(salbp):
 def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     """get_heads / get_tails / get_topo_sort sanity checks."""
     albp = salbp.ALBP.type_1(cycle_time, len(task_times_list), task_times_list, precedence_list, False, False, False)
+    rev_albp = albp.reverse()
     heads = salbp.get_heads(albp, False)
     tails = salbp.get_tails(albp, False)
     topo_sort = salbp.get_topo_sort(albp.dir_pred, albp.dir_suc)
@@ -476,6 +478,18 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     assert len(topo_sort) == len(task_times_list), "length of topological sort does not match"
     assert len(heads) == len(task_times_list), "number of heads does not match the number of tasks"
     assert len(tails) == len(task_times_list), "number of tails does not match the number of tasks"
+    assert salbp.get_heads(albp) == salbp.get_tails(rev_albp), "heads and tails not respecting symmetry"
+
+
+    ##Testing heads and tails respect the bounds
+    opt_assignments = [0, 0, 0, 3, 0, 6, 8, 0, 1, 3, 6, 5, 0, 8, 1, 0, 6, 6, 9, 5, 0, 1, 12, 10, 2, 7, 4, 10, 9, 10, 10, 2, 7, 4, 11, 11, 4, 8, 11, 11, 10, 4, 12, 11, 9, 12, 12, 12, 11, 5]
+    opt_assignments2 = [0, 0, 0, 4, 0, 6, 10, 0, 0, 3, 0, 5, 0, 7, 1, 11, 4, 0, 8, 6, 0, 2, 7, 9, 7, 1, 6, 11, 10, 1, 9, 11, 2, 8, 12, 1, 11, 5, 12, 9, 3, 10, 8, 12, 12, 11, 12, 12, 12, 12]
+    for idx, task_time in enumerate(albp.task_time):
+        p = task_time/cycle_time
+        assert math.ceil(p + heads[idx]) <= (opt_assignments[idx]+1), f"heads not respecting optimal station assignment 1 task {idx} task time {task_time}, heads {heads[idx]}"
+        assert math.ceil(p+ heads[idx]) <= (opt_assignments2[idx]+1), f"heads not respecting optimal station assignment 2 task {idx} task time {task_time}, heads {heads[idx]}"
+        assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments[idx]+1), "tails not respecting optimal station assignment 1"
+        assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments2[idx]+1), "tails not respecting optimal station assignment 2"
     print("✅ Tested heads and tails function of ALBP")
 
 

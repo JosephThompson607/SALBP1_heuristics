@@ -28,18 +28,18 @@ int calc_lb_1(const std::vector<int>& task_time, const int C) {
     return lb_1;
 }
 
-int calc_lb_2(const std::vector<int>& task_time, const int C) {
-    int red_count = 0; //tasks over C/2
-    int blue_count = 0; // tasks  equal to C/2
+float calc_lb_2(const std::vector<int> &task_time, const int C) {
+    float red_count = 0.0; //tasks over C/2
+    float blue_count = 0.0; // tasks  equal to C/2
     for (const auto& task : task_time) {
         if (static_cast<double>(task) > static_cast<double>(C)/2) {
-            ++red_count;
+            red_count += 1.0;
         }
         else  if (static_cast<double>(task) == static_cast<double>(C)/2){
-            ++blue_count;
+            blue_count += 1.0;
         }
     }
-    return red_count + (blue_count+1)/2;
+    return red_count + (blue_count)/2;
 }
 
 int calc_lb_3(const std::vector<int>& task_time, const int C) {
@@ -131,31 +131,55 @@ std::vector<float> get_heads(const ALBP& albp,const bool alreadyTopo) {
     }
     for (int k=0; k < albp.task_time.size(); k++) {
         const int i = top_sort[k];
-        std::vector<int>suc_task_times;
-        suc_task_times.reserve(albp.pred[i].size());
+        std::vector<int>pred_task_times;
+        pred_task_times.reserve(albp.pred[i].size());
         float lb_1 = 0;
-        float lb_heads = 0.0;
         //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
         for (int j: albp.pred[i]) {
             lb_1+=1.0*albp.task_time[j]/albp.C;
-            suc_task_times.push_back(albp.task_time[j]);
-            lb_heads = std::max({lb_heads,  static_cast<float>(albp.task_time[j])/albp.C + heads[j]});
-
-
+            pred_task_times.push_back(albp.task_time[j]);
         }
-        float lb_2 = calc_lb_2(suc_task_times, albp.C);
-        float lb_3 = calc_lb_3(suc_task_times, albp.C);
-        if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3) {
+        std::vector<int> order(albp.dir_pred[i]);
+        std::sort(order.begin(), order.end(), [&](int a, int b){ return heads[a] > heads[b]; });
+        float run = 0,
+        lb_4 = 0;
+        for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + heads[j]); }
+        //lb 2 and 3
+        float lb_2 = calc_lb_2(pred_task_times, albp.C);
+        float lb_3 = calc_lb_3(pred_task_times, albp.C);
+        if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3 ){
             lb_3 -= 1.0/3;
         }
-        else if (static_cast<float>(albp.task_time[i])/albp.C < 0.5) {
+        if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
             lb_2 -= 1.0/2;
         }
 
+        auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(pred_task_times, albp.C);
+        float lb_6 =0;
+        if (d3==0) {
+            if (is_even){
+                if (d1 == 0) {
+                    lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
+                }
+                else {
+                    lb_6 = static_cast<float>(d1+d2+d3) -0.5;
+                }
+            }
+            else {
+                lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
+            }
+        }
+        else {
+            lb_6 = d1+d2+d3_prime;
+        }
 
-        heads[i] = std::max({lb_1,lb_2, lb_3, lb_heads});
 
-        if (static_cast<float>(albp.task_time[i]/albp.C )+ heads[i] > ceil(heads[i]) ){
+        //std::cout << "lb_1: " << lb_1 << " lb_2 " << lb_2 <<  " lb_head: " << lb_4 << " lb_6 " << lb_6 <<std::endl;
+
+
+        heads[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
+
+        if (static_cast<float>(albp.task_time[i])/albp.C + heads[i] > ceil(heads[i]) ){
             heads[i] = ceil(heads[i]);
 
         }
@@ -176,26 +200,46 @@ std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
         std::vector<int>suc_task_times;
         suc_task_times.reserve(albp.suc[i].size());
         float lb_1 = 0;
-        float lb_tails = 0.0;
         //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
         for (int j: albp.suc[i]) {
             lb_1+=1.0*albp.task_time[j]/albp.C;
             suc_task_times.push_back(albp.task_time[j]);
-            lb_tails = std::max({lb_tails,  static_cast<float>(albp.task_time[j])/albp.C + tails[j]});
-
 
         }
+        std::vector<int> order(albp.dir_suc[i]);
+        std::sort(order.begin(), order.end(), [&](int a, int b){ return tails[a] > tails[b]; });
+        float run = 0,
+        lb_4 = 0;
+        for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + tails[j]); }
         float lb_2 = calc_lb_2(suc_task_times, albp.C);
         float lb_3 = calc_lb_3(suc_task_times, albp.C);
         if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3) {
             lb_3 -= 1.0/3;
         }
-        else if (static_cast<float>(albp.task_time[i])/albp.C < 0.5) {
+        if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
             lb_2 -= 1.0/2;
+        }
+        auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(suc_task_times, albp.C);
+        float lb_6 =0;
+        if (d3 ==0) {
+            if (is_even){
+                if (d1 == 0) {
+                    lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
+                }
+                else {
+                    lb_6 = static_cast<float>(d1+d2+d3) -0.5;
+                }
+            }
+            else {
+                lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
+            }
+        }
+        else {
+            lb_6 = d1+d2+d3_prime;
         }
 
 
-        tails[i] = std::max({lb_1,lb_2, lb_3, lb_tails});
+        tails[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
 
         if (static_cast<float>(albp.task_time[i])/albp.C + tails[i] > ceil(tails[i]) ){
             tails[i] = ceil(tails[i]);
@@ -209,7 +253,16 @@ std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
 
 int calc_lb_6(const std::vector<int> & task_times, const int C){
 
-    std::vector<int> sorted = task_times;
+    auto [d1, d2, d3, _, d3_prime] = calc_lb_6_tup(task_times, C);
+    return d1+d2+d3;
+}
+
+std::tuple<int, int, int, bool, float> calc_lb_6_tup(
+    const std::vector<int>& task_times,
+    const int C
+) {
+/* lb six calculations with corrections for lb_4 usage*/
+        std::vector<int> sorted = task_times;
     std::vector <int> station_loads;
     station_loads.reserve(task_times.size());
     std::sort(sorted.begin(), sorted.end());
@@ -224,7 +277,7 @@ int calc_lb_6(const std::vector<int> & task_times, const int C){
     std::vector<int> q_high_sums;
     int q_high_sum_current_index = 0;
     std::map<int, std::pair<int, int>> large_times;  // key -> {sum, count}
-
+    std::vector<float> d_q_prime;
     for (int val : sorted) {
 
             if (val > 1.0*C/2) {
@@ -260,11 +313,14 @@ int calc_lb_6(const std::vector<int> & task_times, const int C){
         d1 ++;
     }
     int unassigned_mid = 0;
+
     for (int val : mid) {
         unassigned_mid+= insert_first_station(val, station_loads, C);
     }
+    bool is_even = (unassigned_mid % 2 == 0);
     int d2 =( unassigned_mid + 2 -1 )/2;
     int d3 = 0;
+    float d3_prime = 0;
     std::reverse(small.begin(), small.end());
 
     int q_bottom = 0;
@@ -272,9 +328,11 @@ int calc_lb_6(const std::vector<int> & task_times, const int C){
         q_bottom += val;
         int q_top = total_mid_time;
         int large_size = 0;
+        int min_above = -1;
         // Try to get q_top from large_times if possible
         if (!large_times.empty()) {
             auto it = large_times.upper_bound(C - val);
+            if (it != large_times.end()) min_above = it->first;      // smallest task in J(1-q,1]
             if (it != large_times.begin()) {
                 --it;
                 q_top += it->second.first;
@@ -283,11 +341,16 @@ int calc_lb_6(const std::vector<int> & task_times, const int C){
         }
 
         float q_sums = 1.0*(q_bottom + q_top )/ C - large_size - d2;
-        if (q_sums > d3) {
-            d3 = std::ceil( q_sums);
+        if (q_sums > 1e-6f) { //Guarding against roundingn error
+            float up   = std::ceil(q_sums - 1e-6f);
+            float corr = up - q_sums;
+            if (min_above >= 0) corr = std::max(corr, 1.f - static_cast<float>(min_above) / C);
+            d3       = std::max(d3, int(up));
+            d3_prime = std::max(d3_prime, up - corr); //compare against previous largest
         }
+
     }
-    return d1+d2+d3;
+    return {d1, d2, d3, is_even, d3_prime};
 
 }
 int calc_salbp_1_bin_lbs(std::vector<int> const &task_times, int C){
@@ -813,6 +876,50 @@ std::vector<int>  pw_ranking(const ALBP&albp) {
     }
     return ranking;
 }
+
+
+std::vector<int> sternatz_ranking(const ALBP&albp, bool reverse) {
+    /* Ranking scheme from "Enhanced multi-Hoffmann heuristic for efficiently solving
+     * real-world assembly line balancing problems in automotive industry"
+     * Sternatz weighting is the task time div c + n_pred(suc) / max(pred(suc)) + heads+t_time div c + tails/max(that)
+     * reverse is 0 for forward and 1 for backward
+     */
+
+    std::vector<int> indices(albp.N);
+    std::vector<int> ranking(albp.N);
+    std::iota( indices.begin(), indices.end(), 0 );
+    std::vector<float> weights;
+    weights.reserve(albp.task_time.size());
+    std::vector<float> head_tails_ratios;
+    head_tails_ratios.reserve(albp.task_time.size());
+    std::vector<float> heads = get_heads(albp, false);
+    std::vector<float> tails = get_tails(albp, false);
+    std::vector<int> degree(albp.N);
+    float max_heads_tails = 1.0;
+    int max_degree = 1;
+    for (int i = 0; i < albp.N; ++i) {
+        int task_time = albp.task_time[i];
+        float ratio = static_cast<float>(task_time) / albp.C;
+        weights.push_back(ratio);
+        float heads_tails = ratio + heads[i] + tails[i];
+        max_heads_tails = std::max(max_heads_tails, heads_tails);
+        head_tails_ratios.push_back(heads_tails);
+        if (reverse) degree[i] = albp.pred[i].size();
+        else degree[i] = albp.suc[i].size();
+        max_degree = std::max(max_degree, degree[i]);
+    }
+    for (int i = 0; i < albp.N; ++i) {
+        weights[i] = weights[i] + head_tails_ratios[i]/ max_heads_tails + static_cast<float>(degree[i]) / max_degree;
+    }
+        std::sort(indices.begin(),indices.end(), [&](const int a, const int b) {
+        return weights[a] > weights[b];  // Ascending order
+    });
+    for (int rank = 0; rank < indices.size(); ++rank) {
+        ranking[indices[rank]] = rank;
+    }
+    return ranking;
+}
+
 std::vector<int>  rpw_ranking(const ALBP&albp) {
     std::vector<int> ranking(albp.N);
 

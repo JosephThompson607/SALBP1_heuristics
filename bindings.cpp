@@ -626,8 +626,9 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                 const std::optional<std::vector<float>>& beta_schedule,
                 const std::optional<float> gamma,
                 const std::optional<std::vector<int>>& task_priorities,
-                const std::optional<unsigned> seed) {
-              return mhh_solve_salbp1(C, N, task_times, raw_precedence, alpha_schedule, beta_schedule, gamma, task_priorities, seed);
+                const std::optional<unsigned> seed,
+                const bool do_sternatz) {
+              return mhh_solve_salbp1(C, N, task_times, raw_precedence, alpha_schedule, beta_schedule, gamma, task_priorities, seed, do_sternatz);
           },
             py::arg("C"),
             py::arg("N"),
@@ -638,6 +639,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
             py::arg("gamma") = std::nullopt,
             py::arg("task_priorities") = std::nullopt,
             py::arg("seed") = std::nullopt,
+            py::arg("do_sternatz") = true,
           R"pbdoc(
                                                   Solve SALBP1 using multi-hoffman (Fleszar and Hindi 2003) heuristic
                                                     Parameters:
