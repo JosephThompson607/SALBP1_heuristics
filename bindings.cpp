@@ -639,7 +639,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
             py::arg("gamma") = std::nullopt,
             py::arg("task_priorities") = std::nullopt,
             py::arg("seed") = std::nullopt,
-            py::arg("do_sternatz") = true,
+            py::arg("do_sternatz") = false,
           R"pbdoc(
                                                   Solve SALBP1 using multi-hoffman (Fleszar and Hindi 2003) heuristic
                                                     Parameters:
@@ -704,6 +704,8 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
 
           seed : int, optional
               Seed for the random number generator.
+            do_sternatz : bool
+                whether to do sternatz ranking, or positional weight
 
           Returns:
           --------
@@ -719,7 +721,8 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
       py::arg("beta_schedule") = std::nullopt,
       py::arg("gamma") = std::nullopt,
       py::arg("task_priorities") = std::nullopt,
-      py::arg("seed") = std::nullopt);
+      py::arg("seed") = std::nullopt,
+      py::arg("do_sternatz") = false);
 
     m.def("tabu_solve_salbp1",
           [](int C, int N,

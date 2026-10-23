@@ -487,8 +487,8 @@ ALBPSolution mhh_solve(const ALBP &albp, const std::optional<std::vector<float>>
 
 
 ALBPSolution mhh_solve_salbp1(const ALBP &albp, const std::optional<std::vector<float>> &alpha_schedule, const std::optional<std::vector<float>> &
-                              beta_schedule, const std::optional<float> gamma, const std::optional<std::vector<int>> &task_priorities, const std::optional<unsigned> seed, const
-                              bool do_sternatz) {
+                              beta_schedule, const std::optional<float> gamma, const std::optional<std::vector<int>> &task_priorities, const std::optional<unsigned> seed,
+                              const bool do_sternatz) {
 
     ALBPSolution best_result  = mhh_solve(albp, alpha_schedule, beta_schedule,gamma, task_priorities, seed, do_sternatz);
     return best_result;

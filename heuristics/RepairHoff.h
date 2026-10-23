@@ -18,7 +18,8 @@ public:
                         const std::optional<std::vector<float>>& beta_schedule = std::nullopt,
                         std::optional<float> gamma= std::nullopt,
                         const std::optional<std::vector<int>>& task_priorities = std::nullopt,
-                        const std::optional<unsigned int> seed= std::nullopt):
+                        const std::optional<unsigned int> seed= std::nullopt,
+                        const bool do_sternatz=false):
             albp_(albp),
            max_attempts_(max_attempts),
            alpha_sched_(alpha_schedule),
@@ -27,12 +28,14 @@ public:
            task_priorities_(task_priorities.value_or(std::vector<int>{})),
            seed_(seed),
            sub_albp_(albp) ,
+            do_sternatz_(do_sternatz),
                 orig_solution_(albp_.N){}
             ;
 
     ALBPSolution solve(const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how);
 private:
     const ALBP& albp_;
+    const bool do_sternatz_;
     const int max_attempts_ = 5000;
     const std::optional<std::vector<float>>& alpha_sched_ ;
     const std::optional<std::vector<float>>& beta_sched_ ;
@@ -55,12 +58,12 @@ private:
 
     ALBP sub_albp_;
 };
-ALBPSolution rep_mhh_salbp1(const ALBP& albp,  const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how, int max_attempts = 5000,
-                        const std::optional<std::vector<float>>& alpha_schedule = std::nullopt,
-                        const std::optional<std::vector<float>>& beta_schedule = std::nullopt,
-                        std::optional<float> gamma= std::nullopt,
-                        const std::optional<std::vector<int>>& task_priorities = std::nullopt,
-                        std::optional<unsigned int> seed= std::nullopt);
+ALBPSolution rep_mhh_salbp1(const ALBP& albp, const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how, int max_attempts = 5000,
+                            const std::optional<std::vector<float>>& alpha_schedule = std::nullopt,
+                            const std::optional<std::vector<float>>& beta_schedule = std::nullopt,
+                            std::optional<float> gamma= std::nullopt,
+                            const std::optional<std::vector<int>>& task_priorities = std::nullopt,
+                            std::optional<unsigned int> seed= std::nullopt, bool do_sternatz = false);
 
 
 

@@ -91,9 +91,9 @@ void swap_and_pop(int item, std::vector<int> &vec);
 inline void remove_tasks_unordered(std::vector<int>& vec, const std::vector<int>& to_remove);
 ALBPSolution mhh_solve_salbp1(int C, int N, const std::vector<int>& task_times, const std::vector<std::vector<int>>& raw_precedence, const std::
                               optional<std::vector<float>> &alpha_schedule= std::nullopt, const std::optional<std::vector<float>> &beta_schedule= std::nullopt, std::optional<float> gamma = std::nullopt, const
-                              std::optional<std::vector<int>> &task_priorities = {}, std::optional<unsigned> seed = std::nullopt, bool  do_sternz=true);
+                              std::optional<std::vector<int>> &task_priorities = {}, std::optional<unsigned> seed = std::nullopt,  bool  do_sternatz=false);
 ALBPSolution mhh_solve_salbp1(const ALBP &albp, const std::optional<std::vector<float>> &alpha_schedule= std::nullopt, const std::optional<std::vector<float>> &
                                       beta_schedule= std::nullopt, std::optional<float> gamma = std::nullopt, const std::optional<std::vector<int>> &task_priorities = {}, std::optional<
-                                  unsigned> seed = std::nullopt, bool do_sternatz = true);
+                                  unsigned> seed = std::nullopt, bool do_sternatz = false);
 
 #endif //MULTIHOFF_H

@@ -124,7 +124,7 @@ ALBP RepairHoff::create_subproblem(const std::vector<std::vector<int> > &station
     return subproblem;
 }
 
-ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how) {
+ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how) {
     //If full, immediately re-solve the entire problem
     if (how == "full") {
         MultiHoff solver(  albp_,
@@ -133,7 +133,8 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
          beta_sched_,
          gamma_,
          task_priorities_,
-         seed_);
+         seed_,
+         do_sternatz_);
         return solver.solve();
     }
     //Set up initial solution
@@ -164,7 +165,8 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
            beta_sched_,
            gamma_,
            new_priorities,
-           seed_);
+           seed_,
+           do_sternatz_);
     ALBPSolution  intermediate = solver.solve();
     //updates the original solution
     //Change in stations is restricted to the subproblem, delta is negative in improvement, positive in deterioration
@@ -205,19 +207,20 @@ ALBPSolution RepairHoff::solve( const std::vector<std::vector<int>>&  station_as
     return orig_solution_;
 }
 
-ALBPSolution rep_mhh_salbp1(const ALBP& albp,  const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how, int max_attempts ,
-                        const std::optional<std::vector<float>>& alpha_schedule ,
-                        const std::optional<std::vector<float>>& beta_schedule ,
-                        std::optional<float> gamma,
-                        const std::optional<std::vector<int>>& task_priorities ,
-                        const std::optional<unsigned int> seed) {
+ALBPSolution rep_mhh_salbp1(const ALBP& albp, const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how, int max_attempts,
+                            const std::optional<std::vector<float>>& alpha_schedule,
+                            const std::optional<std::vector<float>>& beta_schedule,
+                            std::optional<float> gamma,
+                            const std::optional<std::vector<int>>& task_priorities,
+                            const std::optional<unsigned int> seed, const bool do_sternatz) {
     RepairHoff RH(albp,
                 max_attempts,
                 alpha_schedule ,
                 beta_schedule ,
                 gamma,
                 task_priorities,
-                seed);
+                seed,
+                do_sternatz);
     return RH.solve(station_assignments, added_edges, how);
 
 }
