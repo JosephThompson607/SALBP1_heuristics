@@ -51,6 +51,8 @@ struct ALBP{
     [[nodiscard]] ALBP reverse() const;
     void print(bool print_prec_mat= false) const;
     void add_precedence_relation(std::vector<int> prec);
+    void set_tt(int task, int time); //Need getters and setters to modify albp from python
+    int get_tt(int task);
   //  void add_precedence_relations(const std::vector<std::vector<int>> &precs);
 
     CritPaths get_critical_paths() const;

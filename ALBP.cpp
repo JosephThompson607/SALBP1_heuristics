@@ -328,7 +328,16 @@ PathStats ALBP::get_path_stats(const std::vector<int>& nodes) const {
     return PathStats(total, total_sq, min, max, mean, variance);
 
 }
+void ALBP::set_tt(const int task, const int time) {
+    total_time -= task_time[task];
+    task_time[task] = time;
+    total_time += task_time[task];
+}
+int ALBP::get_tt(const int task) {
 
+    return task_time[task];
+
+}
 
 void ALBP::calc_trans_closure() {
     t_close_mat = transitive_closure(prec_mat, N);

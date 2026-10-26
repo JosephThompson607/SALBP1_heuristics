@@ -111,6 +111,15 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                                  PathStats
                                      Struct containing total, total_sq, min, max, mean, and variance.
                              )pbdoc")
+            .def("set_tt", &ALBP::set_tt,
+                py::arg("task"),
+                py::arg("time"),
+                R"pbdoc(
+                        Updates a task's time"))pbdoc")
+            .def("get_tt", &ALBP::get_tt,
+                        py::arg("task"),
+                        R"pbdoc(
+                                returns a task's time"))pbdoc")
             .def_readwrite("name", &ALBP::name)
             .def_readwrite("C", &ALBP::C)
             .def_readwrite("N", &ALBP::N)

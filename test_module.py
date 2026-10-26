@@ -293,6 +293,20 @@ def test_reverse_precedence_matrix(salbp, C, task_times_list, precedence_list):
     print("✅ Tested reverse function of ALBP")
 
 
+def test_task_time_get_and_set(salbp):
+    """Adding a precedence relation should update both the adjacency matrix
+    and the transitive closure matrix."""
+    task_times = [12, 7, 15, 9, 18]
+    N = len(task_times)
+    # Precedence relations [parent, child], one-indexed: 1 -> 3 -> 5, 2 -> 4
+    raw_precedence = [[1, 3], [2, 4], [3, 5]]
+    albp = salbp.ALBP.type_1(C=1000, N=N, task_times=task_times, raw_precedence=raw_precedence)
+    assert albp.get_tt(0) == 12, "First task time is not expected value from getter"
+    albp.set_tt(3, 20)
+    assert albp.get_tt(3) == albp.task_time[3], "Disagreement between getter and task time array"
+    assert albp.get_tt(3) == 20, "task time not expected value after setter"
+
+
 def test_add_precedence_relation(salbp):
     """Adding a precedence relation should update both the adjacency matrix
     and the transitive closure matrix."""
@@ -583,7 +597,7 @@ def test_gamma_mhh(salbp, C, t_times, precs):
 
 def rep_mhh_call(salbp, albp, station_assignments, added_edges, how,
                  max_attempts=1000, alpha=None, beta=None, gamma=None,
-                 ranking=None, seed=None):
+                 ranking=None, seed=None, do_sternatz=False):
     """Repair an infeasible SALBP-1 solution using MHH."""
     return salbp.rep_mhh_salbp1(
             albp=albp,
@@ -596,6 +610,7 @@ def rep_mhh_call(salbp, albp, station_assignments, added_edges, how,
             gamma=gamma,
             task_priorities=ranking,
             seed=seed,
+        do_sternatz = do_sternatz,
         )
 
 
@@ -626,6 +641,7 @@ def test_rep_mhh(salbp, C, t_times, precs):
                 [],
                 [],
                 how,
+                do_sternatz=True
             )
         else:
             result = rep_mhh_call(
@@ -747,6 +763,7 @@ def main():
 
     unit_tests = [
         ("solution_manipulation", lambda: test_solution_manipulation(salbp)),
+        ("getter_and_setter_tt", lambda :test_task_time_get_and_set(salbp)),
         ("lower_bounds", lambda: test_lower_bounds(salbp)),
         ("reverse_precedence_matrix", lambda: test_reverse_precedence_matrix(salbp, C, t_times, precs)),
         ("add_precedence_relation", lambda: test_add_precedence_relation(salbp)),
