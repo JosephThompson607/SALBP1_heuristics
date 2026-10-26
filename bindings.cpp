@@ -14,6 +14,7 @@
 #include "heuristics/tabu.h"
 #include <pybind11/chrono.h>
 
+#include "incomparables.h"
 #include "RepairHoff.h"
 #include "tabu.h"
 namespace py = pybind11;
@@ -145,7 +146,16 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
             .def_readwrite("precedence_relations", &ALBP::precedence_relations)
             .def_readwrite("task_assignment", &ALBP::task_assignment);
 
-
+    py::class_<Incomparables>(m, "Incomparables")
+            .def(py::init<>())
+            .def_readwrite("valid_edges", &Incomparables::valid_edges,
+                           "List of valid edges (pairs of task IDs)")
+            .def_readwrite("deduced_edges", &Incomparables::deduced_edges,
+                           "List of deduced edges")
+            .def_readwrite("increasables", &Incomparables::increasables,
+                           "Boolean vector indicating increasable tasks")
+            .def_readwrite("proven_optimal", &Incomparables::proven_optimal,
+                           "Boolean flag indicating proof of optimality");
 
     // Bind the ALBPSolution class
     py::class_<ALBPSolution>(m, "ALBPSolution")
@@ -571,7 +581,24 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                   list(ALBPSolution)
                       The solved ALBP solution
                   )pbdoc");
-
+    m.def("list_incomparables_albp",
+    [](const ALBP& albp,
+       const std::vector<std::vector<int> >& banned_edges,
+       const std::vector<int>& prev_sol,
+       const std::vector<double>& heads,
+       const std::vector<double>& tails,
+       int ub) {
+        return list_incomparables_albp(
+            albp, banned_edges, prev_sol, heads, tails, ub
+        );
+    },
+    py::arg("ALBPSolution"),
+    py::arg("banned_edges"),
+    py::arg("prev_sol"),
+    py::arg("heads")= std::vector<double>(),
+    py::arg("tails") = std::vector<double>(),
+    py::arg("ub") = -1
+    );
     m.def("ranking_to_solution",
      [](int C, int N,
         const std::vector<int> &task_times,

@@ -21,6 +21,8 @@ set(COMMON_SOURCES
         heuristics/tabu.cpp
         heuristics/RepairHoff.cpp
         heuristics/RepairHoff.h
+        incomparables.cpp
+        incomparables.h
 
 )
 

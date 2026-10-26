@@ -410,8 +410,42 @@ def test_get_path_stats(salbp):
     assert stats.max == 18
     assert stats.mean == 15
     assert stats.variance == 6
-
     print("✅ tested path statistics calculation")
+
+
+def test_list_incomperables(salbp):
+    """Check summary statistics for a subset of tasks."""
+    task_times = [12, 7, 15, 9, 18]
+    N = len(task_times)
+    raw_precedence = [[1, 3], [2, 4], [3, 5]]
+
+    albp = salbp.ALBP.type_1(
+        C=18,
+        N=N,
+        task_times=task_times,
+        raw_precedence=raw_precedence
+    )
+    from collections import Counter
+    heads = salbp.get_heads(albp, False)
+    tails = salbp.get_tails(albp, False)
+    banned_edges = [[]]
+    previous_solution = [0, 1, 2, 3,4 ]
+    # Tasks 1, 3, 5 (0-indexed: 0, 2, 4)
+    # Incomparables list_incomparables_albp(
+    #     const ALBP& albp,
+    # const std::vector<std::vector<int>>& banned_edges = {},
+    # const std::vector<int>& prev_sol = {},
+    # const std::vector<double>& heads = {},
+    # const std::vector<double>& tails = {},
+    # int ub = 0
+    # );
+    results = salbp.list_incomparables_albp(albp, banned_edges, previous_solution, heads, tails, ub = 5 )
+    counter1 = Counter(tuple(x) for x in results.valid_edges)
+    counter2 = Counter(tuple(x) for x in [[2, 1], [3, 2], [4, 3], [5, 4]])
+    assert counter1 == counter2, "incomperable edges are incorrect"
+
+
+    print("✅ tested incomparable edges")
 
 def test_get_positional_weight(salbp):
     """Positional weight should equal each task's own time plus the times
@@ -777,6 +811,7 @@ def main():
         ("critical paths", lambda: test_get_critical_paths(salbp)),
         ("test_ranking_solution", lambda: test_ranking_solution(salbp)),
         ("path stats", lambda: test_get_path_stats(salbp)),
+        ("incomperables ", lambda: test_list_incomperables(salbp)),
 
     ]
 

@@ -333,7 +333,7 @@ void ALBP::set_tt(const int task, const int time) {
     task_time[task] = time;
     total_time += task_time[task];
 }
-int ALBP::get_tt(const int task) {
+int ALBP::get_tt(const int task) const {
 
     return task_time[task];
 
