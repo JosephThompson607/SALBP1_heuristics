@@ -116,6 +116,11 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                 py::arg("time"),
                 R"pbdoc(
                         Updates a task's time"))pbdoc")
+            .def("is_pred", &ALBP::is_pred,
+                    py::arg("task_1"),
+                    py::arg("task_2"),
+                    R"pbdoc(
+                            returns a bool of whether or not task 1 is a predecessor of task 2"))pbdoc")
             .def("get_tt", &ALBP::get_tt,
                         py::arg("task"),
                         R"pbdoc(

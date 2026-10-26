@@ -53,6 +53,7 @@ struct ALBP{
     void add_precedence_relation(std::vector<int> prec);
     void set_tt(int task, int time); //Need getters and setters to modify albp from python
     int get_tt(int task);
+    bool is_pred(int task_1, int task_2) const;
   //  void add_precedence_relations(const std::vector<std::vector<int>> &precs);
 
     CritPaths get_critical_paths() const;

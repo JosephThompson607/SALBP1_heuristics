@@ -305,7 +305,8 @@ def test_task_time_get_and_set(salbp):
     albp.set_tt(3, 20)
     assert albp.get_tt(3) == albp.task_time[3], "Disagreement between getter and task time array"
     assert albp.get_tt(3) == 20, "task time not expected value after setter"
-
+    assert albp.is_pred(0, 2) == True, "task 1 should be predecessor of task 3"
+    print("✅ albp access and mutation passed")
 
 def test_add_precedence_relation(salbp):
     """Adding a precedence relation should update both the adjacency matrix
@@ -763,7 +764,7 @@ def main():
 
     unit_tests = [
         ("solution_manipulation", lambda: test_solution_manipulation(salbp)),
-        ("getter_and_setter_tt", lambda :test_task_time_get_and_set(salbp)),
+        ("albp accessing and mutation", lambda :test_task_time_get_and_set(salbp)),
         ("lower_bounds", lambda: test_lower_bounds(salbp)),
         ("reverse_precedence_matrix", lambda: test_reverse_precedence_matrix(salbp, C, t_times, precs)),
         ("add_precedence_relation", lambda: test_add_precedence_relation(salbp)),
