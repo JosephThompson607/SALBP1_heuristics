@@ -121,6 +121,11 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                     py::arg("task_2"),
                     R"pbdoc(
                             returns a bool of whether or not task 1 is a predecessor of task 2"))pbdoc")
+            .def("is_dir_pred", &ALBP::is_dir_pred,
+                    py::arg("task_1"),
+                    py::arg("task_2"),
+                    R"pbdoc(
+                                                returns a bool of whether or not task 1 is a direct predecessor of task 2"))pbdoc")
             .def("get_tt", &ALBP::get_tt,
                         py::arg("task"),
                         R"pbdoc(

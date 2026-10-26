@@ -305,7 +305,9 @@ def test_task_time_get_and_set(salbp):
     albp.set_tt(3, 20)
     assert albp.get_tt(3) == albp.task_time[3], "Disagreement between getter and task time array"
     assert albp.get_tt(3) == 20, "task time not expected value after setter"
-    assert albp.is_pred(0, 2) == True, "task 1 should be predecessor of task 3"
+    assert albp.is_pred(0, 4) == True, "task 1 should be predecessor of task 5"
+    assert albp.is_dir_pred(0, 4) == False, "task 1 should not be direct predecessor of task 5"
+    assert albp.is_dir_pred(0, 2) == True, "task 1 should not be direct predecessor of task 5"
     print("✅ albp access and mutation passed")
 
 def test_add_precedence_relation(salbp):

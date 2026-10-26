@@ -342,6 +342,9 @@ int ALBP::get_tt(const int task) {
 bool ALBP::is_pred(const int task_1, const int task_2) const {
     return t_close_mat[task_1 * N + task_2];
 }
+bool ALBP::is_dir_pred(const int task_1, const int task_2) const {
+    return prec_mat[task_1 * N + task_2];
+}
 
 void ALBP::calc_trans_closure() {
     t_close_mat = transitive_closure(prec_mat, N);
