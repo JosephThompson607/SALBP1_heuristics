@@ -122,12 +122,12 @@ Incomparables list_incomparables_albp(
             }
 
             if (
-                (prev_sol.empty() || prev_sol[i] >= prev_sol[j]) && !is_banned(i, j) ){
+                (prev_sol.empty() || prev_sol[i] > prev_sol[j]) && !is_banned(i, j) ){
                 valid_edges.push_back({i + 1, j + 1});
             }
 
             if (
-                (prev_sol.empty() || prev_sol[j] >= prev_sol[i]) && !is_banned(j, i)) {
+                (prev_sol.empty() || prev_sol[j] > prev_sol[i]) && !is_banned(j, i)) {
                 valid_edges.push_back({j + 1, i + 1});
             }
         }

@@ -122,6 +122,60 @@ std::vector<int> calc_earliest_station_dir(const ALBP& albp) {
 //     return get_heads(albp, already_topo);
 // }
 
+void calculate_head(const ALBP &albp, std::vector<float> &heads, const int i) {
+    std::vector<int>pred_task_times;
+    pred_task_times.reserve(albp.pred[i].size());
+    float lb_1 = 0;
+    //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
+    for (int j: albp.pred[i]) {
+        lb_1+=1.0*albp.task_time[j]/albp.C;
+        pred_task_times.push_back(albp.task_time[j]);
+    }
+    std::vector<int> order(albp.dir_pred[i]);
+    std::sort(order.begin(), order.end(), [&](int a, int b){ return heads[a] > heads[b]; });
+    float run = 0,
+            lb_4 = 0;
+    for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + heads[j]); }
+    //lb 2 and 3
+    float lb_2 = calc_lb_2(pred_task_times, albp.C);
+    float lb_3 = calc_lb_3(pred_task_times, albp.C);
+    if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3 ){
+        lb_3 -= 1.0/3;
+    }
+    if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
+        lb_2 -= 1.0/2;
+    }
+
+    auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(pred_task_times, albp.C);
+    float lb_6 =0;
+    if (d3==0) {
+        if (is_even){
+            if (d1 == 0) {
+                lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
+            }
+            else {
+                lb_6 = static_cast<float>(d1+d2+d3) -0.5;
+            }
+        }
+        else {
+            lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
+        }
+    }
+    else {
+        lb_6 = d1+d2+d3_prime;
+    }
+
+    //std::cout << "lb_1: " << lb_1 << " lb_2 " << lb_2 <<  " lb_head: " << lb_4 << " lb_6 " << lb_6 <<std::endl;
+
+
+    heads[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
+    if (static_cast<float>(albp.task_time[i])/albp.C + heads[i] > ceil(heads[i]) ){
+        heads[i] = ceil(heads[i]);
+
+    }
+}
+
+
 std::vector<float> get_heads(const ALBP& albp,const bool alreadyTopo) {
     std::vector<float> heads(albp.N, 0);
     std::vector<int> top_sort(albp.N);
@@ -131,62 +185,80 @@ std::vector<float> get_heads(const ALBP& albp,const bool alreadyTopo) {
     }
     for (int k=0; k < albp.task_time.size(); k++) {
         const int i = top_sort[k];
-        std::vector<int>pred_task_times;
-        pred_task_times.reserve(albp.pred[i].size());
-        float lb_1 = 0;
-        //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
-        for (int j: albp.pred[i]) {
-            lb_1+=1.0*albp.task_time[j]/albp.C;
-            pred_task_times.push_back(albp.task_time[j]);
-        }
-        std::vector<int> order(albp.dir_pred[i]);
-        std::sort(order.begin(), order.end(), [&](int a, int b){ return heads[a] > heads[b]; });
-        float run = 0,
-        lb_4 = 0;
-        for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + heads[j]); }
-        //lb 2 and 3
-        float lb_2 = calc_lb_2(pred_task_times, albp.C);
-        float lb_3 = calc_lb_3(pred_task_times, albp.C);
-        if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3 ){
-            lb_3 -= 1.0/3;
-        }
-        if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
-            lb_2 -= 1.0/2;
-        }
-
-        auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(pred_task_times, albp.C);
-        float lb_6 =0;
-        if (d3==0) {
-            if (is_even){
-                if (d1 == 0) {
-                    lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
-                }
-                else {
-                    lb_6 = static_cast<float>(d1+d2+d3) -0.5;
-                }
-            }
-            else {
-                lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
-            }
-        }
-        else {
-            lb_6 = d1+d2+d3_prime;
-        }
-
-
-        //std::cout << "lb_1: " << lb_1 << " lb_2 " << lb_2 <<  " lb_head: " << lb_4 << " lb_6 " << lb_6 <<std::endl;
-
-
-        heads[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
-
-        if (static_cast<float>(albp.task_time[i])/albp.C + heads[i] > ceil(heads[i]) ){
-            heads[i] = ceil(heads[i]);
-
-        }
+        calculate_head(albp, heads, i);
     }
     return heads;
 }
 
+
+
+
+void correct_heads(const ALBP& albp, std::vector<float>& heads,
+                   const std::vector<int>& new_children, const std::vector<int>& topo_pos) {
+    std::vector<char> seen(albp.N, 0);
+    std::vector<int> todo;
+    for (int j : new_children) {
+        if (!seen[j]) {
+            seen[j] = 1; todo.push_back(j);
+        }
+        for (int s : albp.suc[j]) if (!seen[s]) { seen[s] = 1; todo.push_back(s); }
+    }
+    std::sort(todo.begin(), todo.end(), [&](int a, int b){ return topo_pos[a] < topo_pos[b]; });
+    for (int t : todo) calculate_head(albp, heads, t);
+}
+
+
+
+void calculate_tail(const ALBP &albp, std::vector<float> &tails, const int i) {
+    std::vector<int>suc_task_times;
+    suc_task_times.reserve(albp.suc[i].size());
+    float lb_1 = 0;
+    //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
+    for (int j: albp.suc[i]) {
+        lb_1+=1.0*albp.task_time[j]/albp.C;
+        suc_task_times.push_back(albp.task_time[j]);
+
+    }
+    std::vector<int> order(albp.dir_suc[i]);
+    std::sort(order.begin(), order.end(), [&](int a, int b){ return tails[a] > tails[b]; });
+    float run = 0,
+            lb_4 = 0;
+    for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + tails[j]); }
+    float lb_2 = calc_lb_2(suc_task_times, albp.C);
+    float lb_3 = calc_lb_3(suc_task_times, albp.C);
+    if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3) {
+        lb_3 -= 1.0/3;
+    }
+    if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
+        lb_2 -= 1.0/2;
+    }
+    auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(suc_task_times, albp.C);
+    float lb_6 =0;
+    if (d3 ==0) {
+        if (is_even){
+            if (d1 == 0) {
+                lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
+            }
+            else {
+                lb_6 = static_cast<float>(d1+d2+d3) -0.5;
+            }
+        }
+        else {
+            lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
+        }
+    }
+    else {
+        lb_6 = d1+d2+d3_prime;
+    }
+
+
+    tails[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
+
+    if (static_cast<float>(albp.task_time[i])/albp.C + tails[i] > ceil(tails[i]) ){
+        tails[i] = ceil(tails[i]);
+
+    }
+}
 
 std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
     std::vector<float> tails(albp.N, 0);
@@ -197,58 +269,41 @@ std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
     }
     for (int k = albp.N - 1; k >= 0; --k) {
         const int i = top_sort[k];
-        std::vector<int>suc_task_times;
-        suc_task_times.reserve(albp.suc[i].size());
-        float lb_1 = 0;
-        //This method uses the transitive closure succesors, which may be overkill TODO: refactor for dir_suc
-        for (int j: albp.suc[i]) {
-            lb_1+=1.0*albp.task_time[j]/albp.C;
-            suc_task_times.push_back(albp.task_time[j]);
-
-        }
-        std::vector<int> order(albp.dir_suc[i]);
-        std::sort(order.begin(), order.end(), [&](int a, int b){ return tails[a] > tails[b]; });
-        float run = 0,
-        lb_4 = 0;
-        for (int j : order) { run += float(albp.task_time[j]) / albp.C; lb_4 = std::max(lb_4, run + tails[j]); }
-        float lb_2 = calc_lb_2(suc_task_times, albp.C);
-        float lb_3 = calc_lb_3(suc_task_times, albp.C);
-        if (static_cast<float>(albp.task_time[i])/albp.C < 2.0/3) {
-            lb_3 -= 1.0/3;
-        }
-        if (static_cast<float>(albp.task_time[i])/albp.C < 0.5 && (lb_2 == std::floor(lb_2))) {
-            lb_2 -= 1.0/2;
-        }
-        auto [d1, d2, d3, is_even, d3_prime] = calc_lb_6_tup(suc_task_times, albp.C);
-        float lb_6 =0;
-        if (d3 ==0) {
-            if (is_even){
-                if (d1 == 0) {
-                    lb_6 = static_cast<float>(d1+d2+d3) -1./3.0;
-                }
-                else {
-                    lb_6 = static_cast<float>(d1+d2+d3) -0.5;
-                }
-            }
-            else {
-                lb_6 = static_cast<float>(d1+d2+d3) -2./3.0;
-            }
-        }
-        else {
-            lb_6 = d1+d2+d3_prime;
-        }
-
-
-        tails[i] = std::max({lb_1,lb_2, lb_3, lb_4, lb_6});
-
-        if (static_cast<float>(albp.task_time[i])/albp.C + tails[i] > ceil(tails[i]) ){
-            tails[i] = ceil(tails[i]);
-
-        }
+        calculate_tail(albp, tails, i);
     }
     return tails;
 }
 
+
+void correct_tails(const ALBP& albp, std::vector<float>& tails,
+                   const std::vector<int>& new_parents, const std::vector<int>& topo_pos) {
+    std::vector<char> seen(albp.N, 0);
+    std::vector<int> todo;
+    for (int s : new_parents) {
+        if (!seen[s]) { seen[s] = 1; todo.push_back(s); }
+        for (int p : albp.pred[s])
+            if (!seen[p]) { seen[p] = 1; todo.push_back(p); }
+    }
+    // tails depend on successors, so process later tasks first
+    std::sort(todo.begin(), todo.end(),
+              [&](int a, int b) { return topo_pos[a] > topo_pos[b]; });
+    for (int t : todo) calculate_tail(albp, tails, t);
+}
+
+// std::vector<float> correct_tails(const ALBP& albp, std::vector<float> tails, int i, const std::vector<int> &topo_pos) {
+//     // std::vector<float> heads(albp.N, 0);
+//     std::vector<int> top_sort(albp.N);
+//     std::iota(top_sort.begin(), top_sort.end(), 0);
+//     std::vector<int> to_change = albp.pred[i];
+//     to_change.emplace_back(i);
+//     std::sort(to_change.begin(), to_change.end(), [&](int a, int b) {
+//     return topo_pos[a] < topo_pos[b];
+// });
+//     for (int task:to_change) {
+//         calculate_tail(albp, tails, task);
+//     }
+//     return tails;
+// }
 
 
 int calc_lb_6(const std::vector<int> & task_times, const int C){

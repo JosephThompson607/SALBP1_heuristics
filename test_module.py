@@ -118,7 +118,7 @@ def mhh_call(salbp, cycle_time, task_times_list, precedence_list):
         print(f"Error solving SALBP1 (mhh): {e}")
         return None
 
-def poke_mhh(salbp, cycle_time, task_times_list, precedence_list, alpha=None, beta=None, ranking=None, gamma=None, seed=None):
+def poke_mhh(salbp, cycle_time, task_times_list, precedence_list, alpha=None, beta=None, ranking=None, gamma=None, seed=None, do_sternatz=False):
     """Solve SALBP-1 with MHH, using alpha and beta schedules. Returns None on error."""
     try:
         sol_1 = salbp.mhh_solve_salbp1(
@@ -131,6 +131,7 @@ def poke_mhh(salbp, cycle_time, task_times_list, precedence_list, alpha=None, be
             gamma = gamma,
             task_priorities = ranking,
             seed = seed,
+            do_sternatz = do_sternatz
         )
 
 
@@ -442,7 +443,7 @@ def test_list_incomperables(salbp):
     results = salbp.list_incomparables_albp(albp, banned_edges, previous_solution, heads, tails, ub = 5 )
     counter1 = Counter(tuple(x) for x in results.valid_edges)
     counter2 = Counter(tuple(x) for x in [[2, 1], [3, 2], [4, 3], [5, 4]])
-    assert counter1 == counter2, "incomperable edges are incorrect"
+    assert counter1 == counter2, f"incomperable edges are incorrect {results.valid_edges}"
 
 
     print("✅ tested incomparable edges")
