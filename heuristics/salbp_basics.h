@@ -26,6 +26,13 @@ std::vector<int> pw_ranking(const ALBP &albp);
 std::vector<int> rpw_ranking(const ALBP &albp);
 std::vector<int> suc_over_slack_ranking(const ALBP&albp);
 std::vector<float> get_heads(const ALBP& albp, bool alreadyTopo);
+
+std::vector<float> correct_heads(const ALBP &albp, std::vector<float> &heads,
+                                 const std::vector<int> &new_children, const std::vector<int> &topo_pos);
+
+std::vector<float> correct_tails(const ALBP &albp, std::vector<float> &tails,
+                                 const std::vector<int> &new_parents, const std::vector<int> &topo_pos);
+
 std::vector<int> sternatz_ranking(const ALBP&albp, bool reverse) ;
 std::vector<float> get_tails(const ALBP& albp, bool alreadyTopo);
 void shallow_task_assignment( const ALBP&albp,  ALBPSolution& solution);

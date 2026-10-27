@@ -330,6 +330,31 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                                                       The solved ALBP solution
                                                   )pbdoc"
     );
+    m.def("correct_heads",
+      [](const ALBP& albp,
+         std::vector<float> heads,
+         const std::vector<int>& new_children,
+         const std::vector<int>& topo_pos) {
+          return correct_heads(albp, heads, new_children, topo_pos);
+      },
+      "Correct head values after adding precedence edges",
+      py::arg("albp"),
+      py::arg("heads"),
+      py::arg("new_children"),
+      py::arg("topo_pos"));
+
+    m.def("correct_tails",
+          [](const ALBP& albp,
+             std::vector<float> tails,
+             const std::vector<int>& new_parents,
+             const std::vector<int>& topo_pos) {
+              return correct_tails(albp, tails, new_parents, topo_pos);
+          },
+          "Correct tail values after adding precedence edges",
+          py::arg("albp"),
+          py::arg("tails"),
+          py::arg("new_parents"),
+          py::arg("topo_pos"));
     m.def("get_heads", &get_heads,
           "Get head values for each task",
           py::arg("albp"),

@@ -523,7 +523,6 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     heads = salbp.get_heads(albp, False)
     tails = salbp.get_tails(albp, False)
     topo_sort = salbp.get_topo_sort(albp.dir_pred, albp.dir_suc)
-
     assert sum(albp.task_time) == albp.total_time, (
         f"task times {sum(albp.task_time)} should equal total time {albp.total_time}"
     )
@@ -542,6 +541,42 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
         assert math.ceil(p+ heads[idx]) <= (opt_assignments2[idx]+1), f"heads not respecting optimal station assignment 2 task {idx} task time {task_time}, heads {heads[idx]}"
         assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments[idx]+1), "tails not respecting optimal station assignment 1"
         assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments2[idx]+1), "tails not respecting optimal station assignment 2"
+
+        # Test incremental corrections after adding one edge (7, 12)
+    parent, child = 7, 12
+
+    new_albp = salbp.ALBP.type_1(
+        cycle_time, len(task_times_list), task_times_list,
+        precedence_list, False, False, False
+    )
+    new_albp.add_precedence_relation([parent, child])
+
+    new_topo_sort = salbp.get_topo_sort(new_albp.dir_pred, new_albp.dir_suc)
+    topo_pos = [0] * len(task_times_list)
+
+
+    for pos, task in enumerate(new_topo_sort):
+        topo_pos[task] = pos
+    new_parents = [6]
+    new_children =[11]
+
+
+    corrected_heads = salbp.correct_heads(
+        new_albp, heads, new_children, topo_pos
+    )
+    corrected_tails = salbp.correct_tails(
+        new_albp, tails, new_parents, topo_pos
+    )
+
+    expected_heads = salbp.get_heads(new_albp, False)
+    expected_tails = salbp.get_tails(new_albp, False)
+
+    assert corrected_heads == expected_heads, (
+        f"Heads mismatch: {corrected_heads} != {expected_heads}"
+    )
+    assert corrected_tails == expected_tails, (
+        f"Tails mismatch: {corrected_tails} != {expected_tails}"
+    )
     print("✅ Tested heads and tails function of ALBP")
 
 

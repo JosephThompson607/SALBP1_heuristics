@@ -265,11 +265,13 @@ void ALBP::add_precedence_relation(std::vector<int> prec) {
     upstream.push_back(parent);
     std::vector<int> downstream = suc[child];
     downstream.push_back(child);
+
     for (int a : upstream) {
         for (int b : downstream) {
             if (a!=b) {
                 t_close_mat[a * N + b] = 1;
             }
+
 
         }
     }

@@ -191,20 +191,23 @@ std::vector<float> get_heads(const ALBP& albp,const bool alreadyTopo) {
 }
 
 
-
-
-void correct_heads(const ALBP& albp, std::vector<float>& heads,
-                   const std::vector<int>& new_children, const std::vector<int>& topo_pos) {
+std::vector<float> correct_heads(const ALBP &albp, std::vector<float> &heads,
+                                 const std::vector<int> &new_children, const std::vector<int> &topo_pos) {
     std::vector<char> seen(albp.N, 0);
     std::vector<int> todo;
+    std::cout<< "updating: ";
     for (int j : new_children) {
         if (!seen[j]) {
             seen[j] = 1; todo.push_back(j);
         }
-        for (int s : albp.suc[j]) if (!seen[s]) { seen[s] = 1; todo.push_back(s); }
+        for (int s : albp.suc[j]) if (!seen[s]) { seen[s] = 1;
+            std::cout << s << " ";
+            todo.push_back(s); }
     }
+    std::cout << std::endl;
     std::sort(todo.begin(), todo.end(), [&](int a, int b){ return topo_pos[a] < topo_pos[b]; });
     for (int t : todo) calculate_head(albp, heads, t);
+    return heads;
 }
 
 
@@ -275,8 +278,8 @@ std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
 }
 
 
-void correct_tails(const ALBP& albp, std::vector<float>& tails,
-                   const std::vector<int>& new_parents, const std::vector<int>& topo_pos) {
+std::vector<float> correct_tails(const ALBP &albp, std::vector<float> &tails,
+                                 const std::vector<int> &new_parents, const std::vector<int> &topo_pos) {
     std::vector<char> seen(albp.N, 0);
     std::vector<int> todo;
     for (int s : new_parents) {
@@ -288,6 +291,7 @@ void correct_tails(const ALBP& albp, std::vector<float>& tails,
     std::sort(todo.begin(), todo.end(),
               [&](int a, int b) { return topo_pos[a] > topo_pos[b]; });
     for (int t : todo) calculate_tail(albp, tails, t);
+    return tails;
 }
 
 // std::vector<float> correct_tails(const ALBP& albp, std::vector<float> tails, int i, const std::vector<int> &topo_pos) {
