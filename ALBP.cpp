@@ -10,6 +10,7 @@
 #include <numeric>
 #include <unordered_set>
 #include <climits>
+#include <algorithm>
 
 //function that returns a matrix that is the transitiive closure of the precedence matrix
 std::vector<int> transitive_closure(const std::vector<int>& prec_mat, int N) {
