@@ -69,6 +69,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
             .def("reverse", &ALBP::reverse)
             .def("add_precedence_relation", &ALBP::add_precedence_relation,
                         py::arg("prec"),
+                        py::arg("track")=false,
                         R"pbdoc(
                                      Add a precedence relation and update the transitive closure matrix, pred, and suc.
 
@@ -76,7 +77,11 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                                      -----------
                                      prec : list of int
                                          Two-element list [parent, child], one-indexed.
+                                    Track:
+                                        adds edge to tracked edge list
                                      )pbdoc")
+            .def("clear_tracking", &ALBP::clear_tracking)
+            .def("reset_added_relations", &ALBP::reset_added_relations)
 //             .def("add_precedence_relations", &ALBP::add_precedence_relations,
 //                     py::arg("precs"),
 //                     R"pbdoc(
@@ -330,31 +335,36 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                                                       The solved ALBP solution
                                                   )pbdoc"
     );
-    m.def("correct_heads",
+    m.def("correct_heads_rpw",
       [](const ALBP& albp,
-         std::vector<float> heads,
+         std::vector<float>& heads,
          const std::vector<int>& new_children,
-         const std::vector<int>& topo_pos) {
-          return correct_heads(albp, heads, new_children, topo_pos);
+         const std::vector<int>& topo_pos,
+         std::vector<int>& rpw) {
+          return correct_heads_rpw(albp, heads, new_children, topo_pos, rpw);
       },
       "Correct head values after adding precedence edges",
       py::arg("albp"),
       py::arg("heads"),
       py::arg("new_children"),
-      py::arg("topo_pos"));
+      py::arg("topo_pos"),
+      py::arg("rpw"));
 
-    m.def("correct_tails",
+    m.def("correct_tails_pw",
           [](const ALBP& albp,
-             std::vector<float> tails,
+             std::vector<float>& tails,
              const std::vector<int>& new_parents,
-             const std::vector<int>& topo_pos) {
-              return correct_tails(albp, tails, new_parents, topo_pos);
+             const std::vector<int>& topo_pos,
+             std::vector<int>& pw){
+              return correct_tails_pw(albp, tails, new_parents, topo_pos, pw);
           },
           "Correct tail values after adding precedence edges",
           py::arg("albp"),
           py::arg("tails"),
           py::arg("new_parents"),
-          py::arg("topo_pos"));
+          py::arg("topo_pos"),
+          py::arg("pw"));
+
     m.def("get_heads", &get_heads,
           "Get head values for each task",
           py::arg("albp"),

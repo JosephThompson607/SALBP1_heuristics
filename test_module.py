@@ -320,12 +320,25 @@ def test_add_precedence_relation(salbp):
     raw_precedence = [[1, 3], [2, 4], [3, 5]]
 
     albp = salbp.ALBP.type_1(C=1000, N=N, task_times=task_times, raw_precedence=raw_precedence)
-    albp.add_precedence_relation([3, 2])
+    albp.add_precedence_relation([3, 2], True)
 
     assert albp.t_close_mat[0 + 1] == 1, "1 did not get 2 as a successor in transitive closure"
     assert albp.t_close_mat[0 + 3] == 1, "1 did not get 4 as a successor in transitive closure"
     assert albp.t_close_mat[2 * 5 + 3] == 1, "3 did not get 4 as a successor in transitive closure"
     assert albp.prec_mat[2 * 5 + 1] == 1, "3 did not get 2 as a successor is adjacency matrix"
+    print("before")
+    albp.print(True)
+    albp.reset_added_relations()
+    print("after")
+    albp.print(True)
+    assert albp.t_close_mat[0 + 1] != 1, "1 still has 2 as a successor in transitive closure"
+    assert albp.t_close_mat[0 + 3] != 1, "1  still has  4 as a successor in transitive closure"
+    assert albp.t_close_mat[2 * 5 + 3] != 1, "3  still has  4 as a successor in transitive closure"
+    assert albp.prec_mat[2 * 5 + 1] != 1, "3  still has  2 as a successor is adjacency matrix"
+    albp.add_precedence_relation([3, 2], True)
+    albp.clear_tracking()
+    albp.reset_added_relations()
+    assert albp.t_close_mat[0 + 1] == 1, "Tracking was cleared, 1 should have 2 as a successor"
     print("✅ tested precedence constraint insertion")
 
 def test_get_critical_paths(salbp):
@@ -414,7 +427,7 @@ def test_get_path_stats(salbp):
     print("✅ tested path statistics calculation")
 
 
-def test_list_incomperables(salbp):
+def test_list_incomperables(salbp, cycle_time, task_times_list, precedence_list):
     """Check summary statistics for a subset of tasks."""
     task_times = [12, 7, 15, 9, 18]
     N = len(task_times)
@@ -444,6 +457,13 @@ def test_list_incomperables(salbp):
     counter1 = Counter(tuple(x) for x in results.valid_edges)
     counter2 = Counter(tuple(x) for x in [[2, 1], [3, 2], [4, 3], [5, 4]])
     assert counter1 == counter2, f"incomperable edges are incorrect {results.valid_edges}"
+    albp2 = salbp.ALBP.type_1(C=cycle_time, N=len(task_times_list), task_times= task_times_list, raw_precedence= precedence_list)
+    heads = salbp.get_heads(albp2, False)
+    tails = salbp.get_tails(albp2, False)
+    prev_sol = [0, 0, 0, 3, 0, 6, 8, 0, 1, 3, 6, 5, 0, 8, 1, 0, 6, 6, 9, 5, 0, 1, 12, 10, 2, 7, 4, 10, 9, 10, 10, 2, 7, 4, 11, 11, 4, 8, 11, 11, 10, 4, 12, 11, 9, 12, 12, 12, 11, 5]
+    results = salbp.list_incomparables_albp(albp2, banned_edges, prev_sol, heads, tails, ub = 13)
+    for edge in results.valid_edges:
+        assert (edge[0] <= albp2.N) and (edge[1] <= albp2.N), f'Edge {edge} not repsecting instance size'
 
 
     print("✅ tested incomparable edges")
@@ -541,7 +561,8 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
         assert math.ceil(p+ heads[idx]) <= (opt_assignments2[idx]+1), f"heads not respecting optimal station assignment 2 task {idx} task time {task_time}, heads {heads[idx]}"
         assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments[idx]+1), "tails not respecting optimal station assignment 1"
         assert 14 - math.ceil(p + tails[idx])  >= (opt_assignments2[idx]+1), "tails not respecting optimal station assignment 2"
-
+    pw = salbp.get_positional_weight(albp)
+    rpw = salbp.get_reverse_positional_weight(albp)
         # Test incremental corrections after adding one edge (7, 12)
     parent, child = 7, 12
 
@@ -561,21 +582,29 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     new_children =[11]
 
 
-    corrected_heads = salbp.correct_heads(
-        new_albp, heads, new_children, topo_pos
+    corrected_heads, corr_rpw = salbp.correct_heads_rpw(
+        new_albp, heads, new_children, topo_pos, rpw
     )
-    corrected_tails = salbp.correct_tails(
-        new_albp, tails, new_parents, topo_pos
+    corrected_tails, corr_pw = salbp.correct_tails_pw(
+        new_albp, tails, new_parents, topo_pos, pw
     )
 
     expected_heads = salbp.get_heads(new_albp, False)
     expected_tails = salbp.get_tails(new_albp, False)
+    expected_pw = salbp.get_positional_weight(new_albp)
+    expected_rpw = salbp.get_reverse_positional_weight(new_albp)
 
     assert corrected_heads == expected_heads, (
         f"Heads mismatch: {corrected_heads} != {expected_heads}"
     )
     assert corrected_tails == expected_tails, (
         f"Tails mismatch: {corrected_tails} != {expected_tails}"
+    )
+    assert corr_rpw == expected_rpw, (
+        f"rpw mismatch: {corr_rpw} != {expected_rpw}"
+    )
+    assert corr_pw == expected_pw, (
+        f"pw mismatch: {corr_pw} != {expected_pw}"
     )
     print("✅ Tested heads and tails function of ALBP")
 
@@ -847,7 +876,7 @@ def main():
         ("critical paths", lambda: test_get_critical_paths(salbp)),
         ("test_ranking_solution", lambda: test_ranking_solution(salbp)),
         ("path stats", lambda: test_get_path_stats(salbp)),
-        ("incomperables ", lambda: test_list_incomperables(salbp)),
+        ("incomperables ", lambda: test_list_incomperables(salbp, C, t_times, precs)),
 
     ]
 

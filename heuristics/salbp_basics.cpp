@@ -191,8 +191,9 @@ std::vector<float> get_heads(const ALBP& albp,const bool alreadyTopo) {
 }
 
 
-std::vector<float> correct_heads(const ALBP &albp, std::vector<float> &heads,
-                                 const std::vector<int> &new_children, const std::vector<int> &topo_pos) {
+std::pair<std::vector<float>, std::vector<int>> correct_heads_rpw(const ALBP &albp, std::vector<float> &heads,
+                                                              const std::vector<int> &new_children,
+                                                              const std::vector<int> &topo_pos, std::vector<int> &rpw) {
     std::vector<char> seen(albp.N, 0);
     std::vector<int> todo;
     for (int j : new_children) {
@@ -204,8 +205,11 @@ std::vector<float> correct_heads(const ALBP &albp, std::vector<float> &heads,
             todo.push_back(s); }
     }
     std::sort(todo.begin(), todo.end(), [&](int a, int b){ return topo_pos[a] < topo_pos[b]; });
-    for (int t : todo) calculate_head(albp, heads, t);
-    return heads;
+    for (const int t : todo) {
+        calculate_head(albp, heads, t);
+        calc_rpw(albp, rpw, t);
+    }
+    return {heads, rpw};
 }
 
 
@@ -276,8 +280,9 @@ std::vector<float> get_tails(const ALBP& albp,const bool alreadyTopo) {
 }
 
 
-std::vector<float> correct_tails(const ALBP &albp, std::vector<float> &tails,
-                                 const std::vector<int> &new_parents, const std::vector<int> &topo_pos) {
+std::pair<std::vector<float>, std::vector<int>> correct_tails_pw(const ALBP &albp, std::vector<float> &tails,
+                                                                const std::vector<int> &new_parents,
+                                                                const std::vector<int> &topo_pos, std::vector<int> &pw) {
     std::vector<char> seen(albp.N, 0);
     std::vector<int> todo;
     for (int s : new_parents) {
@@ -288,11 +293,15 @@ std::vector<float> correct_tails(const ALBP &albp, std::vector<float> &tails,
     // tails depend on successors, so process later tasks first
     std::sort(todo.begin(), todo.end(),
               [&](int a, int b) { return topo_pos[a] > topo_pos[b]; });
-    for (int t : todo) calculate_tail(albp, tails, t);
-    return tails;
+    for (int t : todo) {
+
+        calculate_tail(albp, tails, t);
+        calc_pw(albp, pw, t);
+    }
+    return {tails, pw};
 }
 
-// std::vector<float> correct_tails(const ALBP& albp, std::vector<float> tails, int i, const std::vector<int> &topo_pos) {
+// std::vector<float> correct_tails_pw(const ALBP& albp, std::vector<float> tails, int i, const std::vector<int> &topo_pos) {
 //     // std::vector<float> heads(albp.N, 0);
 //     std::vector<int> top_sort(albp.N);
 //     std::iota(top_sort.begin(), top_sort.end(), 0);
@@ -862,26 +871,34 @@ std::vector<int> n_children_ranking(const ALBP&albp) {
     return ranking;
 }
 
+void calc_pw(const ALBP &albp, std::vector<int>& weights, int i) {
+    weights[i] = albp.task_time[i]; // Own weight
+    //Iterates through the transitive closure matrix and adds to weights
+    for (const auto &suc : albp.suc[i]) {
+        weights[i] += albp.task_time[suc];
+    }
+}
+
 std::vector<int>  get_positional_weight(const ALBP &albp) {
     std::vector<int> weights(albp.N);
     for (int i = 0; i < albp.N; ++i) {
-        weights[i] += albp.task_time[i]; // Own weight
-        //Iterates through the transitive closure matrix and adds to weights
-        for (const auto &suc : albp.suc[i]) {
-            weights[i] += albp.task_time[suc];
-        }
+        calc_pw(albp, weights, i);
     }
     return weights;
+}
+
+void calc_rpw(const ALBP &albp, std::vector<int>& weights, int i) {
+    weights[i] = albp.task_time[i]; // Own weight
+    //Iterates through the transitive closure matrix and adds to weights
+    for (const auto &pred : albp.pred[i]) {
+        weights[i] += albp.task_time[pred];
+    }
 }
 
 std::vector<int>  get_reverse_positional_weight(const ALBP &albp) {
     std::vector<int> weights(albp.N);
     for (int i = 0; i < albp.N; ++i) {
-        weights[i] += albp.task_time[i]; // Own weight
-        //Iterates through the transitive closure matrix and adds to weights
-        for (const auto &pred : albp.pred[i]) {
-            weights[i] += albp.task_time[pred];
-        }
+        calc_rpw(albp, weights, i);
     }
     return weights;
 }

@@ -82,6 +82,11 @@ std::vector<std::vector<int>> all_predecessors(const std::vector<int>& t_close_m
     return all_pred;
 }
 
+// struct EdgeUndo {
+//     int u, v;
+//     std::vector<std::pair<int,int>> new_closure_pairs;  // (a,b) that were 0 and became 1
+// };
+
 void ALBP::add_relation(int u, int v, bool reverse) {
     if (reverse) std::swap(u, v);
 
@@ -255,29 +260,101 @@ void ALBP::update_prec_and_suc(const std::vector<int>& new_pred, const std::vect
 // }
 
 //Updates transitve closure info if precedence relation is added
-void ALBP::add_precedence_relation(std::vector<int> prec) {
+
+void ALBP::clear_tracking() {
+    flipped_.clear();
+    added_edges_.clear();
+}
+void ALBP::add_precedence_relation(std::vector<int> prec, bool track) {
     //assuming one indexed precedence relation
     int parent = prec[0]-1;
     int child = prec[1]-1;
+    if (track) {
+        added_edges_.push_back(parent);
+        added_edges_.push_back(child);
+    }
+
     add_relation(parent, child, false);
     //Get rows that need to be updated for the matrix
     std::vector<int> upstream = pred[parent];
     upstream.push_back(parent);
     std::vector<int> downstream = suc[child];
     downstream.push_back(child);
+    std::vector<int> new_relations;
 
     for (int a : upstream) {
         for (int b : downstream) {
             if (a!=b) {
-                t_close_mat[a * N + b] = 1;
+                if (t_close_mat[a * N + b] ==0) {
+                    if (track){
+                        flipped_.push_back(a);
+                        flipped_.push_back(b);
+                    }
+
+                    t_close_mat[a * N + b] = 1;
+                }
+
             }
 
 
         }
     }
+
     update_prec_and_suc(downstream, upstream);
+}
+
+// erase the last occurrence of x; returns false if absent
+static bool erase_last(std::vector<int>& vec, int x) {
+    auto it = std::find(vec.rbegin(), vec.rend(), x);
+    if (it == vec.rend()) return false;
+    vec.erase(std::next(it).base());   // reverse_iterator -> forward iterator
+    return true;
+}
+
+void ALBP::remove_relation(int u, int v, bool reverse) {
+    if (reverse) std::swap(u, v);
+
+    if (u < 0 || u > N-1 || v < 0 || v > N-1) {
+        std::cerr << "Invalid precedence pair (" << u << ", " << v
+                  << "). Assuming 0-indexed.\n";
+        return;
+    }
+
+    // search precedence_relations from the back (most recent edges first)
+    bool found = false;
+    for (int i = (int)precedence_relations.size() - 1; i >= 0; --i) {
+        if (precedence_relations[i].parent == u && precedence_relations[i].child == v) {
+            prec_mat[u * N + v] = 0;
+            precedence_relations.erase(precedence_relations.begin() + i);
+            found = true;
+            break;
+        }
+    }
+    if (!found) return;   // edge was never added; don't touch the other structures
+
+    erase_last(dir_suc[u], v);
+    erase_last(dir_pred[v], u);
 
 }
+
+
+void ALBP::reset_added_relations() {
+    /*undues the added precedence relations from add_precedence_relations */
+    for (int i = (int)added_edges_.size() - 2; i >= 0; i -= 2) {
+        int a = added_edges_[i], b = added_edges_[i+1];
+        remove_relation(a, b, false);
+    }
+
+    for (int i = (int)flipped_.size() - 2; i >= 0; i -= 2) {   // reverse order
+        int a = flipped_[i], b = flipped_[i+1];
+        t_close_mat[a * N + b] = 0;
+        erase_last(pred[b], a);
+        erase_last(suc[a], b);
+    }
+
+    clear_tracking();
+}
+
 
 CritPaths ALBP::get_critical_paths() const {
     //Gets the heigth and depth information for each node along with the nodes in the critical path that determines it

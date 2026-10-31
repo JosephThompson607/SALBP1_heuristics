@@ -27,17 +27,21 @@ std::vector<int> rpw_ranking(const ALBP &albp);
 std::vector<int> suc_over_slack_ranking(const ALBP&albp);
 std::vector<float> get_heads(const ALBP& albp, bool alreadyTopo);
 
-std::vector<float> correct_heads(const ALBP &albp, std::vector<float> &heads,
-                                 const std::vector<int> &new_children, const std::vector<int> &topo_pos);
+std::pair<std::vector<float>, std::vector<int>> correct_heads_rpw(const ALBP &albp, std::vector<float> &heads,
+                                                              const std::vector<int> &new_children,
+                                                              const std::vector<int> &topo_pos, std::vector<int> &rpw);
 
-std::vector<float> correct_tails(const ALBP &albp, std::vector<float> &tails,
-                                 const std::vector<int> &new_parents, const std::vector<int> &topo_pos);
+std::pair<std::vector<float>, std::vector<int>> correct_tails_pw(const ALBP &albp, std::vector<float> &tails,
+                                                              const std::vector<int> &new_parents,
+                                                              const std::vector<int> &topo_pos, std::vector<int> &pw);
 
 std::vector<int> sternatz_ranking(const ALBP&albp, bool reverse) ;
 std::vector<float> get_tails(const ALBP& albp, bool alreadyTopo);
 void shallow_task_assignment( const ALBP&albp,  ALBPSolution& solution);
 void sort_by_ranking(std::vector<int>& items, const std::vector<int>& ranking);
 void task_oriented_assignment( const ALBP& albp,ALBPSolution& solution);
+void calc_rpw(const ALBP &albp, std::vector<int>& weights, int i);
+void calc_pw(const ALBP &albp, std::vector<int>& weights, int i);
 ALBPSolution ranking_to_solution( int C, int N, const std::vector<int>& task_times, const std::vector<std::vector<int>>& raw_precedence, const std::vector<int>& ranking);
 int count_violations(const ALBP&albp, const std::vector<int>& task_assignment);
 std::vector<ALBPSolution>  priority_solve_salbp_2( int S, int N, const std::vector<int>& task_times, const std::vector<std::vector<int>>& raw_precedence,  int n_random =100, bool move_target = false, std::optional<unsigned int> seed =  std::nullopt) ;

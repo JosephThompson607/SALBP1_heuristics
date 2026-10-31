@@ -50,7 +50,9 @@ struct ALBP{
     static ALBP type_2(int S, int N, const std::vector<int>& task_times_, const std::vector<std::vector<int>>& raw_precedence, bool reverse=false, bool light=false, bool is_topological=false, bool is_one_indexed = true);
     [[nodiscard]] ALBP reverse() const;
     void print(bool print_prec_mat= false) const;
-    void add_precedence_relation(std::vector<int> prec);
+
+    void add_precedence_relation(std::vector<int> prec, bool track = false);
+    void reset_added_relations();
     void set_tt(int task, int time); //Need getters and setters to modify albp from python
     int get_tt(int task) const;
     [[nodiscard]] bool is_pred(int task_1, int task_2) const;
@@ -61,9 +63,11 @@ struct ALBP{
     PathStats get_path_stats(const std::vector<int>& nodes) const;
     void calc_trans_closure();
     void calc_fast_trans_closure(bool is_topological=false);
-
+    void clear_tracking();
     bool loadFromFile(const std::string& filename);
     private:
+        std::vector<int> flipped_;
+        std::vector<int> added_edges_;
         ALBP(int C_, int S_, int N_,
             const std::vector<int>& task_times_,
             const std::vector<std::vector<int>>& raw_precedence,
@@ -80,6 +84,7 @@ struct ALBP{
 
 
         void add_relation(int u, int v, bool reverse);
+        void remove_relation(int u, int v, bool reverse);
 
 };
  std::vector<int>fast_transitive_closure(const std::vector<std::vector<int>>& dir_preds, const std::vector<std::vector<int>>& dir_sucs, const std::vector<int>& prec_mat,  bool alreadyTopo = true);
