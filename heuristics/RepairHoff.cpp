@@ -150,17 +150,18 @@ ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_ass
 #ifndef NDEBUG
     std::vector<int> seen(n, 0);
 
-    for (const auto& st : station_assignments)
+    for (const auto& st : station_assignments) {
         int station_total = 0;
         for (int t : st) {
             if (t < 0 || t >= n) throw std::invalid_argument("Task index out of range: " + std::to_string(t));
             if (seen[t]++) throw std::invalid_argument("Task assigned twice: " + std::to_string(t));
             station_total += albp_.task_time[t];
         }
-        assert(station_total <=albp_.C);
-
-    for (int c : seen)
+        throw std::invalid_argument("Station capacity exceeded: " + std::to_string(station_total));
+    }
+    for (int c : seen) {
         if (c != 1) throw std::invalid_argument("Not all tasks are assigned");
+    }
 #endif
     //Gets the correct bounds for the stations
     std::pair<int,int> s_bounds = get_s_bounds(added_edges, station_assignments, how);
