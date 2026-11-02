@@ -143,9 +143,19 @@ ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_ass
     orig_solution_.station_to_task();
     orig_solution_.station_to_load(albp_);
     int lb_6 = calc_salbp_1_bin_lbs(albp_.task_time, albp_.C);
-    if (orig_solution_.n_stations == lb_6) {
+    if (orig_solution_.n_stations == lb_6 && (count_violations(albp_, orig_solution_.task_assignment) ==0)) {
+
         return orig_solution_;
     }
+    const int n = (int)albp_.task_time.size();
+    std::vector<int> seen(n, 0);
+    for (const auto& st : station_assignments)
+        for (int t : st) {
+            if (t < 0 || t >= n) throw std::invalid_argument("Task index out of range: " + std::to_string(t));
+            if (seen[t]++) throw std::invalid_argument("Task assigned twice: " + std::to_string(t));
+        }
+    for (int c : seen)
+        if (c != 1) throw std::invalid_argument("Not all tasks are assigned");
 
     //Gets the correct bounds for the stations
     std::pair<int,int> s_bounds = get_s_bounds(added_edges, station_assignments, how);
