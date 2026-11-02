@@ -157,7 +157,7 @@ ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_ass
             if (seen[t]++) throw std::invalid_argument("Task assigned twice: " + std::to_string(t));
             station_total += albp_.task_time[t];
         }
-        throw std::invalid_argument("Station capacity exceeded: " + std::to_string(station_total));
+        if (station_total > albp_.C)throw std::invalid_argument("Station capacity exceeded: " + std::to_string(station_total));
     }
     for (int c : seen) {
         if (c != 1) throw std::invalid_argument("Not all tasks are assigned");
