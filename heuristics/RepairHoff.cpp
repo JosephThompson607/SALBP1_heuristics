@@ -25,6 +25,7 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
 
     for (int s = 0; s < station_assignments.size(); ++s) {
         int station_total = 0;
+        //Checking for the case where the precedence constraints made the assignment infeasible
         for (auto& task : station_assignments[s]) {
             if (children.contains(task) && s < left_station) {
                 left_station = s;
