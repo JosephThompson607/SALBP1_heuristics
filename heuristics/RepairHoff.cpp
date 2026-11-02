@@ -24,6 +24,7 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
     int right_station = 0;
 
     for (int s = 0; s < station_assignments.size(); ++s) {
+        int station_total = 0;
         for (auto& task : station_assignments[s]) {
             if (children.contains(task) && s < left_station) {
                 left_station = s;
@@ -31,7 +32,14 @@ std::pair<int,int> RepairHoff::process_stations(const std::vector<std::vector<in
             if (parents.contains(task)  && s > right_station) {
                 right_station = s;
             }
+            station_total +=albp_.task_time[task];
         }
+        if (station_total > albp_.C) {
+            //Checking for the case where the bounding arguments have made an assignment infeasible
+            left_station = std::min(left_station, s);
+            right_station = std::max(right_station, s);
+        }
+
     }
     if (left_station > right_station) {
         throw std::invalid_argument("Left station is greater than right station");
@@ -151,13 +159,10 @@ ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_ass
     std::vector<int> seen(n, 0);
 
     for (const auto& st : station_assignments) {
-        int station_total = 0;
         for (int t : st) {
             if (t < 0 || t >= n) throw std::invalid_argument("Task index out of range: " + std::to_string(t));
             if (seen[t]++) throw std::invalid_argument("Task assigned twice: " + std::to_string(t));
-            station_total += albp_.task_time[t];
         }
-        if (station_total > albp_.C)throw std::invalid_argument("Station capacity exceeded: " + std::to_string(station_total));
     }
     for (int c : seen) {
         if (c != 1) throw std::invalid_argument("Not all tasks are assigned");
