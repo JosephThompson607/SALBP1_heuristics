@@ -266,10 +266,14 @@ void ALBP::clear_tracking() {
     flipped_.clear();
     added_edges_.clear();
 }
-void ALBP::add_precedence_relation(std::vector<int> prec, bool track) {
+
+bool ALBP::add_precedence_relation(std::vector<int> prec, bool track) {
+    /* adds a single precedence relation to the graph. returns false if the precedence constraint was invalid*/
     //assuming one indexed precedence relation
     int parent = prec[0]-1;
     int child = prec[1]-1;
+    //Check against existing precedence relations
+    if ((t_close_mat[parent*N + child])||(t_close_mat[child*N + parent])) return false;
     if (track) {
         added_edges_.push_back(parent);
         added_edges_.push_back(child);
@@ -302,6 +306,7 @@ void ALBP::add_precedence_relation(std::vector<int> prec, bool track) {
     }
 
     update_prec_and_suc(downstream, upstream);
+    return true;
 }
 
 // erase the last occurrence of x; returns false if absent

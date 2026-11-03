@@ -51,7 +51,7 @@ struct ALBP{
     [[nodiscard]] ALBP reverse() const;
     void print(bool print_prec_mat= false) const;
 
-    void add_precedence_relation(std::vector<int> prec, bool track = false);
+    bool add_precedence_relation(std::vector<int> prec, bool track = false);
     void reset_added_relations();
     void set_tt(int task, int time); //Need getters and setters to modify albp from python
     int get_tt(int task) const;
