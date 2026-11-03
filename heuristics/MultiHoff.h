@@ -30,7 +30,7 @@ public:
         const ALBP& albp_;
         void add_new_available(std::vector<int> &eligible_tasks,  int task);
         void remove_new_available(std::vector<int> &eligible_tasks,  int task);
-        void gen_load( int depth, int remaining_time,int start,  float cost, std::vector<int>eligible_tasks) ;
+        void gen_load(int depth, int remaining_time, int start, float cost, std::vector<int> &eligible_tasks) ;
         std::vector<int> filter_eligible(std::vector<int>& elig, bool reverse);
 
         void calc_salbp_1_lbs(int &lb) const;

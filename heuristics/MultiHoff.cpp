@@ -422,7 +422,7 @@ void MultiHoff::remove_new_available(std::vector<int> &eligible_tasks, const int
     }
 
 }
-void MultiHoff::gen_load( int depth, int remaining_capacity,const int start, float cost, std::vector<int>eligible_tasks) {
+void MultiHoff::gen_load(int depth, int remaining_capacity, const int start, float cost, std::vector<int> &eligible_tasks) {
     std::uniform_real_distribution<double> dis(0.0, 1.0);
 
     // 4. Generate the random number

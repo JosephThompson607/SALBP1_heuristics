@@ -326,11 +326,7 @@ def test_add_precedence_relation(salbp):
     assert albp.t_close_mat[0 + 3] == 1, "1 did not get 4 as a successor in transitive closure"
     assert albp.t_close_mat[2 * 5 + 3] == 1, "3 did not get 4 as a successor in transitive closure"
     assert albp.prec_mat[2 * 5 + 1] == 1, "3 did not get 2 as a successor is adjacency matrix"
-    print("before")
-    albp.print(True)
     albp.reset_added_relations()
-    print("after")
-    albp.print(True)
     assert albp.t_close_mat[0 + 1] != 1, "1 still has 2 as a successor in transitive closure"
     assert albp.t_close_mat[0 + 3] != 1, "1  still has  4 as a successor in transitive closure"
     assert albp.t_close_mat[2 * 5 + 3] != 1, "3  still has  4 as a successor in transitive closure"
