@@ -71,11 +71,9 @@ bool chain_is_dead(
     return std::ceil(total - EPS) >= ub;
 }
 
-
-
 Incomparables list_incomparables_albp(
     const ALBP& albp,
-    const std::vector<std::vector<int>>& banned_edges,
+    const std::vector<std::pair<int, int>>& banned_edges,
     const std::vector<int>& prev_sol,
     const std::vector<double>& heads ,
     const std::vector<double>& tails ,
@@ -85,16 +83,16 @@ Incomparables list_incomparables_albp(
 
     bool use_bound = !heads.empty() && !tails.empty() && ub != 0;
 
-    std::vector<std::vector<int>> valid_edges;
-    std::vector<std::vector<int>> deduced_edges;
+    std::vector<std::pair<int,int>> valid_edges;
+    std::vector<std::pair<int,int>> deduced_edges;
     std::vector<bool> increasables(n, true);
 
     bool proven_optimal = false;
 
     std::vector<char> banned(static_cast<size_t>(n) * n, 0);
     for (const auto& e : banned_edges) {
-        if (e.size() == 2 && e[0] >= 0 && e[0] < n && e[1] >= 0 && e[1] < n)
-            banned[static_cast<size_t>(e[0]) * n + e[1]] = 1;
+        if (e.first >= 0 && e.first < n && e.second >= 0 && e.second < n)
+            banned[static_cast<size_t>(e.first) * n + e.second] = 1;
     }
     auto is_banned = [&](int i, int j) {
         return banned[static_cast<size_t>(i) * n + j] != 0;
@@ -153,18 +151,95 @@ Incomparables list_incomparables_albp(
     };
 }
 
+Incomparables filter_incomparables_albp(
+    const ALBP& albp,
+    const std::vector<std::pair<int, int>> &candidate_edges,
+    // 1-based {a, b}: a before b
+    const std::vector<std::pair<int, int>> &banned_edges,
+    // 0-based
+    const std::vector<int>& prev_sol,
+    const std::vector<double>& heads,
+    const std::vector<double>& tails,
+    const int ub
+) {
+    const int n = albp.N;
+    const bool use_bound = !heads.empty() && !tails.empty() && ub != 0;
 
-std::pair<std::vector<std::string>, py::array_t<double>>
-fast_edge_stats(const ALBP& albp,
-                const std::vector<std::vector<int>>& valid_edges,
-                const std::vector<double>& pw,
-                const std::vector<double>& rpw,
-                const std::vector<float>& heads,
-                const std::vector<float>& tails,
-                int ub,
-                int lb,
-                const std::vector<int>& task_assignment)
-{
+    std::vector<std::pair<int,int>> valid_edges;
+    std::vector<std::pair<int,int>> deduced_edges;
+    std::vector<bool> increasables(n, true);
+    bool proven_optimal = false;
+
+    valid_edges.reserve(candidate_edges.size());
+
+    std::vector<char> banned(static_cast<size_t>(n) * n, 0);
+    for (const auto& e : banned_edges) {
+        if (e.first>= 0 && e.first < n && e.second >= 0 && e.second < n)
+            banned[static_cast<size_t>(e.first) * n + e.second] = 1;
+    }
+    auto is_banned = [&](int a, int b) {
+        return banned[static_cast<size_t>(a) * n + b] != 0;
+    };
+    auto try_emit = [&](int x, int y) {
+        if ((prev_sol.empty() || prev_sol[x] > prev_sol[y]) && !is_banned(x, y)) {
+                valid_edges.push_back({x + 1, y + 1});
+        }
+    };
+
+    for (const auto& e : candidate_edges) {
+        const int a = e.first - 1;
+        const int b = e.second - 1;
+        if (a < 0 || a >= n || b < 0 || b >= n || a == b) continue;
+
+        if (albp.is_pred(a, b) || albp.is_pred(b, a))
+            continue;
+
+        if (use_bound) {
+            const bool ab_dead = chain_is_dead(albp, ub, heads, tails, a, b);
+            const bool ba_dead = chain_is_dead(albp, ub, heads, tails, b, a);
+
+            if (ab_dead && ba_dead) {
+                proven_optimal = true;
+                continue;
+            }
+
+            if (ab_dead || ba_dead) {
+                const int first  = ba_dead ? a : b;
+                const int second = ba_dead ? b : a;
+                deduced_edges.push_back({first + 1, second + 1});
+                continue;
+            }
+        }
+
+        try_emit (a, b);
+        try_emit (b, a);
+    }
+
+        for (int task = 0; task < n; ++task) {
+            for (const int pred : albp.dir_pred[task]) {
+                check_t_time_increase(
+                    albp, task, pred, increasables,
+                    use_bound ? &heads : nullptr,
+                    use_bound ? &tails : nullptr,
+                    ub
+                );
+            }
+        }
+
+
+    return { valid_edges, deduced_edges, increasables, proven_optimal };
+}
+
+std::pair<std::vector<std::string>, py::array_t<double>> fast_edge_stats(const ALBP& albp,
+                                                                        const std::vector<std::vector<int>>& valid_edges,
+                                                                        const std::vector<double>& pw,
+                                                                        const std::vector<double>& rpw,
+                                                                        const std::vector<float>& heads,
+                                                                        const std::vector<float>& tails,
+                                                                        int ub,
+                                                                        int lb,
+                                                                        const std::vector<int>& task_assignment)
+                                                        {
     // Doubles so the divisions below are not integer divisions
     const double C = albp.C;
     const double N = albp.N;

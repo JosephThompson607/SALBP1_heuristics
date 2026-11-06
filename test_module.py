@@ -438,7 +438,7 @@ def test_list_incomperables(salbp, cycle_time, task_times_list, precedence_list)
     from collections import Counter
     heads = salbp.get_heads(albp, False)
     tails = salbp.get_tails(albp, False)
-    banned_edges = [[]]
+    banned_edges = []
     previous_solution = [0, 1, 2, 3,4 ]
     # Tasks 1, 3, 5 (0-indexed: 0, 2, 4)
     # Incomparables list_incomparables_albp(
@@ -453,6 +453,13 @@ def test_list_incomperables(salbp, cycle_time, task_times_list, precedence_list)
     counter1 = Counter(tuple(x) for x in results.valid_edges)
     counter2 = Counter(tuple(x) for x in [[2, 1], [3, 2], [4, 3], [5, 4]])
     assert counter1 == counter2, f"incomperable edges are incorrect {results.valid_edges}"
+    # filter: pass one candidate edge (1-based), and the prev solution picks the direction
+    res = salbp.filter_incomparables_albp(albp, [(1, 2)], [], previous_solution, heads, tails, 5)
+    assert [tuple(e) for e in res.valid_edges] == [(2, 1)]
+
+    # swap the order of tasks 1 and 2 in the solution and the edge flips
+    res = salbp.filter_incomparables_albp(albp, [(1, 2)], [], [1, 0, 2, 3, 4], heads, tails, 5)
+    assert [tuple(e) for e in res.valid_edges] == [(1, 2)]
     albp2 = salbp.ALBP.type_1(C=cycle_time, N=len(task_times_list), task_times= task_times_list, raw_precedence= precedence_list)
     heads = salbp.get_heads(albp2, False)
     tails = salbp.get_tails(albp2, False)

@@ -32,17 +32,28 @@ bool chain_is_dead(
     int second
 );
 struct Incomparables {
-    std::vector<std::vector<int>> valid_edges;
-    std::vector<std::vector<int>> deduced_edges;
+    std::vector<std::pair<int, int>> valid_edges;
+    std::vector<std::pair<int, int>> deduced_edges;
     std::vector<bool> increasables;
     bool proven_optimal;
 };
 Incomparables list_incomparables_albp(
     const ALBP& albp,
-    const std::vector<std::vector<int>>& banned_edges = {},
+    const std::vector<std::pair<int,int>>& banned_edges = {},
     const std::vector<int>& prev_sol = {},
     const std::vector<double>& heads = {},
     const std::vector<double>& tails = {},
+    int ub = 0
+);
+Incomparables filter_incomparables_albp(
+    const ALBP& albp,
+    const std::vector<std::pair<int, int>> &candidate_edges,
+    // 1-based {a, b}: a before b
+    const std::vector<std::pair<int, int>> &banned_edges = {},
+    // 0-based
+    const std::vector<int>& prev_sol = {},
+    const std::vector<double>& heads={},
+    const std::vector<double>& tails={},
     int ub = 0
 );
 std::pair<std::vector<std::string>, py::array_t<double>>

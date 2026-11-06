@@ -630,7 +630,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                   )pbdoc");
     m.def("list_incomparables_albp",
     [](const ALBP& albp,
-       const std::vector<std::vector<int> >& banned_edges,
+       const std::vector<std::pair<int,int>>& banned_edges,
        const std::vector<int>& prev_sol,
        const std::vector<double>& heads,
        const std::vector<double>& tails,
@@ -644,8 +644,28 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
     py::arg("prev_sol"),
     py::arg("heads")= std::vector<double>(),
     py::arg("tails") = std::vector<double>(),
-    py::arg("ub") = -1
+    py::arg("ub") = 0
     );
+    m.def("filter_incomparables_albp",
+[](const ALBP& albp,
+    const std::vector<std::pair<int,int>>& candidate_edges,
+   const std::vector<std::pair<int,int>>& banned_edges,
+   const std::vector<int>& prev_sol,
+   const std::vector<double>& heads,
+   const std::vector<double>& tails,
+   int ub) {
+    return filter_incomparables_albp(
+        albp, candidate_edges, banned_edges, prev_sol, heads, tails, ub
+    );
+},
+py::arg("ALBPSolution"),
+py::arg("candidate_edges"),
+py::arg("banned_edges"),
+py::arg("prev_sol"),
+py::arg("heads")= std::vector<double>(),
+py::arg("tails") = std::vector<double>(),
+py::arg("ub") = 0
+);
     m.def("ranking_to_solution",
      [](int C, int N,
         const std::vector<int> &task_times,
