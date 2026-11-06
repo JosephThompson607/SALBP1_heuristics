@@ -21,8 +21,6 @@ set(COMMON_SOURCES
         heuristics/tabu.cpp
         heuristics/RepairHoff.cpp
         heuristics/RepairHoff.h
-        incomparables.cpp
-        incomparables.h
 
 )
 
@@ -40,6 +38,9 @@ include(FetchContent)
     set(PYTHON_SOURCES
             ${COMMON_SOURCES}
             bindings.cpp
+            incomparables.cpp
+            incomparables.h
+
     )
 
     # Create Python modulea
