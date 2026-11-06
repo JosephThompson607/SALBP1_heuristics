@@ -91,12 +91,13 @@ Incomparables list_incomparables_albp(
 
     bool proven_optimal = false;
 
+    std::vector<char> banned(static_cast<size_t>(n) * n, 0);
+    for (const auto& e : banned_edges) {
+        if (e.size() == 2 && e[0] >= 0 && e[0] < n && e[1] >= 0 && e[1] < n)
+            banned[static_cast<size_t>(e[0]) * n + e[1]] = 1;
+    }
     auto is_banned = [&](int i, int j) {
-        return std::find(
-            banned_edges.begin(),
-            banned_edges.end(),
-            std::vector<int>{i, j}
-        ) != banned_edges.end();
+        return banned[static_cast<size_t>(i) * n + j] != 0;
     };
 
     for (int i = 0; i < n; ++i) {
