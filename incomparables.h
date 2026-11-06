@@ -8,6 +8,11 @@
 #include <cmath>
 #include <utility>
 #include <algorithm>
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+namespace py = pybind11;
+
 
 #include "ALBP.h"
 
@@ -40,6 +45,15 @@ Incomparables list_incomparables_albp(
     const std::vector<double>& tails = {},
     int ub = 0
 );
-
+std::pair<std::vector<std::string>, py::array_t<double>>
+fast_edge_stats(const ALBP& albp,
+                const std::vector<std::vector<int>>& valid_edges,
+                const std::vector<double>& pw,
+                const std::vector<double>& rpw,
+                const std::vector<float>& heads,
+                const std::vector<float>& tails,
+                int ub,
+                int lb,
+                const std::vector<int>& task_assignment);
 
 #endif //INCOMPARABLES_H

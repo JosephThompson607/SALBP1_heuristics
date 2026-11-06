@@ -604,6 +604,188 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     )
     print("✅ Tested heads and tails function of ALBP")
 
+def test_feature_generation(salbp, cycle_time, task_times_list, precedence_list):
+    """get_heads / get_tails / get_topo_sort sanity checks."""
+    import numpy as np
+    albp = salbp.ALBP.type_1(
+        cycle_time, len(task_times_list), task_times_list,
+        precedence_list, False, False, False
+    )
+    rev_albp = albp.reverse()
+
+    heads = salbp.get_heads(albp, False)
+    tails = salbp.get_tails(albp, False)
+    pw = salbp.get_positional_weight(albp)
+    rpw = salbp.get_reverse_positional_weight(albp)
+    lb_6 = salbp.calc_salbp_1_lb6(task_times_list, cycle_time)
+
+    ub = 13
+    task_assignments = [
+        0, 0, 0, 3, 0, 6, 8, 0, 1, 3, 6, 5, 0, 8, 1, 0, 6, 6, 9, 5,
+        0, 1, 12, 10, 2, 7, 4, 10, 9, 10, 10, 2, 7, 4, 11, 11, 4, 8,
+        11, 11, 10, 4, 12, 11, 9, 12, 12, 12, 11, 5
+    ]
+
+    results = salbp.list_incomparables_albp(
+        albp, [], task_assignments, heads, tails, ub=ub
+    )
+    valid_edges = results.valid_edges
+
+    column_names, features = salbp.fast_edge_stats(
+        albp,
+        valid_edges,
+        pw,
+        rpw,
+        heads,
+        tails,
+        ub,
+        lb_6,
+        task_assignments
+    )
+
+
+
+    column_names, features = salbp.fast_edge_stats(
+        albp, valid_edges, pw, rpw, heads, tails,
+        ub, lb_6, task_assignments
+    )
+
+    # ---- Matrix structure ----
+    assert features.shape == (len(valid_edges), 31)
+    assert len(column_names) == 31
+    assert len(set(column_names)) == 31
+    assert np.isfinite(features).all()
+
+    # ---- Column names ----
+    expected_columns = [
+        "par_pw_child_rpw_div_c",
+        "par_rpw_child_pw_div_c",
+        "par_t_chi_h_div_lb",
+        "chi_t_par_h_div_lb",
+        "pop_linkage",
+        "solution_distance",
+        "par_n_dir_sucs",
+        "par_n_dir_preds",
+        "par_degree",
+        "par_share_descendants",
+        "par_share_ancestors",
+        "par_load_div_c",
+        "chi_n_dir_sucs",
+        "chi_n_dir_preds",
+        "chi_degree",
+        "chi_share_descendants",
+        "chi_share_ancestors",
+        "chi_load_div_c",
+        "max_div_c",
+        "min_div_c",
+        "max_div_min",
+        "OS",
+        "AIP",
+        "DOD",
+        "DOC",
+        "gap",
+        "par_t_time_div_c",
+        "chi_t_time_div_c",
+        "sum_t_time_div_c",
+        "parent",
+        "child"
+    ]
+    assert column_names == expected_columns
+
+    # ---- Graph-level feature checks ----
+    C = cycle_time
+    N = len(task_times_list)
+
+    max_time = max(task_times_list)
+    min_time = min(task_times_list)
+
+    total_pred = sum(len(x) for x in albp.pred)
+    total_dir_pred = sum(len(x) for x in albp.dir_pred)
+
+    n_no_pred = sum(len(x) == 0 for x in albp.pred)
+    n_no_suc = sum(len(x) == 0 for x in albp.suc)
+
+    OS = 2 * total_pred / (N * (N - 1))
+    AIP = total_dir_pred / N
+
+    DOD_den = total_dir_pred + n_no_pred - 1
+    DOD = 1 - (total_dir_pred + n_no_pred - N) / DOD_den if DOD_den else 0
+
+    DOC_den = total_dir_pred + n_no_suc - 1
+    DOC = 1 - (total_dir_pred + n_no_suc - N) / DOC_den if DOC_den else 0
+
+    graph_features = {
+        "max_div_c": max_time / C,
+        "min_div_c": min_time / C,
+        "max_div_min": max_time / (min_time + 0.001),
+        "OS": OS,
+        "AIP": AIP,
+        "DOD": DOD,
+        "DOC": DOC,
+        "gap": (ub - lb_6) / (lb_6 + 0.00001),
+    }
+
+    for name, expected in graph_features.items():
+        idx = column_names.index(name)
+        np.testing.assert_allclose(features[:, idx], expected, rtol=1e-9)
+
+    # ---- Edge-level feature checks ----
+    station_loads = np.zeros(ub)
+    for task, station in enumerate(task_assignments):
+        station_loads[station] += task_times_list[task]
+
+    for i, (parent, child) in enumerate(valid_edges):
+        p = parent - 1
+        c = child - 1
+
+        p_out = len(albp.dir_suc[p])
+        p_in = len(albp.dir_pred[p])
+        c_out = len(albp.dir_suc[c])
+        c_in = len(albp.dir_pred[c])
+
+        p_anc = len(albp.pred[p])
+        p_des = len(albp.suc[p])
+        c_anc = len(albp.pred[c])
+        c_des = len(albp.suc[c])
+
+        p_time = task_times_list[p]
+        c_time = task_times_list[c]
+
+        expected = {
+            "par_pw_child_rpw_div_c": (pw[p] + rpw[c]) / C,
+            "par_rpw_child_pw_div_c": (rpw[p] + pw[c]) / C,
+            "par_t_chi_h_div_lb": (heads[c] + tails[p]) / lb_6,
+            "chi_t_par_h_div_lb": (heads[p] + tails[c]) / lb_6,
+            "pop_linkage": (p_anc + c_des) / N,
+            "solution_distance": abs(task_assignments[p] - task_assignments[c]) / ub,
+            "par_n_dir_sucs": p_out,
+            "par_n_dir_preds": p_in,
+            "par_degree": p_out + p_in,
+            "par_share_descendants": p_des / N,
+            "par_share_ancestors": p_anc / N,
+            "par_load_div_c": station_loads[task_assignments[p]] / C,
+            "chi_n_dir_sucs": c_out,
+            "chi_n_dir_preds": c_in,
+            "chi_degree": c_out + c_in,
+            "chi_share_descendants": c_des / N,
+            "chi_share_ancestors": c_anc / N,
+            "chi_load_div_c": station_loads[task_assignments[c]] / C,
+            "par_t_time_div_c": p_time / C,
+            "chi_t_time_div_c": c_time / C,
+            "sum_t_time_div_c": (p_time + c_time) / C,
+            "parent": p,
+            "child": c,
+        }
+
+        for name, value in expected.items():
+            idx = column_names.index(name)
+            np.testing.assert_allclose(
+                features[i, idx], value,
+                rtol=1e-5, atol=1e-5,
+                err_msg=f"Edge {(parent, child)}, feature {name}"
+            )
+
+    print("✅ Tested feature generation function")
 
 # ===========================================================================
 # 3. Regression tests: run each solver end-to-end on the benchmark instance.
@@ -873,6 +1055,7 @@ def main():
         ("test_ranking_solution", lambda: test_ranking_solution(salbp)),
         ("path stats", lambda: test_get_path_stats(salbp)),
         ("incomperables ", lambda: test_list_incomperables(salbp, C, t_times, precs)),
+        ("feature generation", lambda: test_feature_generation(salbp, C, t_times, precs))
 
     ]
 

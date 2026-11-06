@@ -88,7 +88,7 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
 //                     R"pbdoc(
 //                                              Add several precedence relations and update the transitive closure matrix, pred, and suc.
 //
-//                                              Parameters:
+//                                              Parame ters:
 //                                              -----------
 //                                              prec : list of lists of int
 //                                                  List of Two-element lists [parent, child], one-indexed.
@@ -457,6 +457,17 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
       list of int
           Reverse positional weight for each task
       )pbdoc");
+    m.def("fast_edge_stats", &fast_edge_stats,
+      py::arg("albp"),
+      py::arg("valid_edges"),
+      py::arg("pw"),
+      py::arg("rpw"),
+      py::arg("heads"),
+      py::arg("tails"),
+      py::arg("ub"),
+      py::arg("lb"),
+      py::arg("task_assignment"),
+      "Returns (column_names, features) where features has shape (n_edges, n_cols).");
 
     // Second overload using lambda
     m.def("hoff_solve_salbp1",

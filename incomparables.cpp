@@ -3,6 +3,17 @@
 //
 
 #include "incomparables.h"
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <utility>
+
+namespace py = pybind11;
 void check_t_time_increase(
     const ALBP& albp,
     int i,
@@ -139,4 +150,152 @@ Incomparables list_incomparables_albp(
         increasables,
         proven_optimal
     };
+}
+
+
+std::pair<std::vector<std::string>, py::array_t<double>>
+fast_edge_stats(const ALBP& albp,
+                const std::vector<std::vector<int>>& valid_edges,
+                const std::vector<double>& pw,
+                const std::vector<double>& rpw,
+                const std::vector<float>& heads,
+                const std::vector<float>& tails,
+                int ub,
+                int lb,
+                const std::vector<int>& task_assignment)
+{
+    // Doubles so the divisions below are not integer divisions
+    const double C = albp.C;
+    const double N = albp.N;
+    const int n_tasks = static_cast<int>(albp.task_time.size());
+
+    // ---- Graph-level stats ----
+    double max_task_time = 0.0;
+    double min_task_time = C;
+    long long total_predecessors = 0, total_dir_pred = 0;
+    int n_no_predecessors = 0, n_no_successors = 0;
+    std::vector<double> station_loads(ub, 0.0);
+    for (int task = 0; task < n_tasks; ++task) {
+        const double t_time = albp.task_time[task];
+
+        max_task_time = std::max(max_task_time, t_time);
+        min_task_time = std::min(min_task_time, t_time);
+
+        const size_t n_pred = albp.pred[task].size();
+        total_predecessors += n_pred;
+        total_dir_pred     += albp.dir_pred[task].size();
+        if (n_pred == 0)                   ++n_no_predecessors;
+        if (albp.suc[task].size() == 0)    ++n_no_successors;
+
+        station_loads[task_assignment[task]] += t_time;
+    }
+    const double OS  = 2.0 * total_predecessors / (N * (N - 1.0));
+    const double AIP = total_dir_pred / N;
+
+    const double dod_den = total_dir_pred + n_no_predecessors - 1.0;
+    const double DOD = (dod_den == 0.0) ? 0.0
+                     : 1.0 - (total_dir_pred + n_no_predecessors - N) / dod_den;
+
+    const double doc_den = total_dir_pred + n_no_successors - 1.0;
+    const double DOC = (doc_den == 0.0) ? 0.0
+                     : 1.0 - (total_dir_pred + n_no_successors - N) / doc_den;
+
+    const double gap         = (static_cast<double>(ub) - lb) / (lb + 0.00001);
+    const double max_div_c   = max_task_time / C;
+    const double min_div_c   = min_task_time / C;
+    const double max_div_min = max_task_time / (min_task_time + 0.001);
+
+    // ---- Column names (index in this list = column index used below) ----
+    std::vector<std::string> names = {
+        /*  0 */ "par_pw_child_rpw_div_c",
+        /*  1 */ "par_rpw_child_pw_div_c",
+        /*  2 */ "par_t_chi_h_div_lb",
+        /*  3 */ "chi_t_par_h_div_lb",
+        /*  4 */ "pop_linkage",
+        /*  5 */ "solution_distance",
+        /*  6 */ "par_n_dir_sucs",
+        /*  7 */ "par_n_dir_preds",
+        /*  8 */ "par_degree",
+        /*  9 */ "par_share_descendants",
+        /* 10 */ "par_share_ancestors",
+        /* 11 */ "par_load_div_c",
+        /* 12 */ "chi_n_dir_sucs",
+        /* 13 */ "chi_n_dir_preds",
+        /* 14 */ "chi_degree",
+        /* 15 */ "chi_share_descendants",
+        /* 16 */ "chi_share_ancestors",
+        /* 17 */ "chi_load_div_c",
+        /* 18 */ "max_div_c",
+        /* 19 */ "min_div_c",
+        /* 20 */ "max_div_min",
+        /* 21 */ "OS",
+        /* 22 */ "AIP",
+        /* 23 */ "DOD",
+        /* 24 */ "DOC",
+        /* 25 */ "gap",
+        /* 26 */ "par_t_time_div_c",
+        /* 27 */ "chi_t_time_div_c",
+        /* 28 */ "sum_t_time_div_c",
+        /* 29 */ "parent",
+        /* 30 */ "child"
+    };
+    const size_t n_cols  = names.size();
+    const size_t n_edges = valid_edges.size();
+
+    py::array_t<double> features({n_edges, n_cols});
+    auto X = features.mutable_unchecked<2>();
+
+    // ---- Edge-level stats ----
+    for (size_t i = 0; i < n_edges; ++i) {
+        const int par = valid_edges[i][0]-1;
+        const int chi = valid_edges[i][1]-1;
+
+        const double par_n_anc = albp.pred[par].size();
+        const double par_n_des = albp.suc[par].size();
+        const double chi_n_anc = albp.pred[chi].size();
+        const double chi_n_des = albp.suc[chi].size();
+        const double par_t_time_div_c = albp.task_time[par] / C;
+        const double chi_t_time_div_c = albp.task_time[chi] / C;
+        const int par_out = static_cast<int>(albp.dir_suc[par].size());
+        const int par_in  = static_cast<int>(albp.dir_pred[par].size());
+        const int chi_out = static_cast<int>(albp.dir_suc[chi].size());
+        const int chi_in  = static_cast<int>(albp.dir_pred[chi].size());
+
+        X(i, 0)  = (pw[par] + rpw[chi]) / C;
+        X(i, 1)  = (rpw[par] + pw[chi]) / C;
+        X(i, 2)  = (heads[chi] + tails[par]) / lb;
+        X(i, 3)  = (heads[par] + tails[chi]) / lb;
+        X(i, 4)  = (par_n_anc + chi_n_des) / N;
+        X(i, 5)  = std::abs(task_assignment[par] - task_assignment[chi]) / static_cast<double>(ub);
+
+        X(i, 6)  = par_out;
+        X(i, 7)  = par_in;
+        X(i, 8)  = par_out + par_in;
+        X(i, 9)  = par_n_des / N;
+        X(i, 10) = par_n_anc / N;
+        X(i, 11) = station_loads[task_assignment[par]] / C;
+
+        X(i, 12) = chi_out;
+        X(i, 13) = chi_in;
+        X(i, 14) = chi_out + chi_in;
+        X(i, 15) = chi_n_des / N;
+        X(i, 16) = chi_n_anc / N;
+        X(i, 17) = station_loads[task_assignment[chi]] / C;
+
+        X(i, 18) = max_div_c;
+        X(i, 19) = min_div_c;
+        X(i, 20) = max_div_min;
+        X(i, 21) = OS;
+        X(i, 22) = AIP;
+        X(i, 23) = DOD;
+        X(i, 24) = DOC;
+        X(i, 25) = gap;
+        X(i, 26) = par_t_time_div_c;
+        X(i, 27) = chi_t_time_div_c;
+        X(i, 28) = par_t_time_div_c + chi_t_time_div_c;
+        X(i, 29) = par;
+        X(i, 30) = chi;
+    }
+
+    return {std::move(names), std::move(features)};
 }
