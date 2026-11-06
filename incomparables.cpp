@@ -263,8 +263,8 @@ fast_edge_stats(const ALBP& albp,
 
         X(i, 0)  = (pw[par] + rpw[chi]) / C;
         X(i, 1)  = (rpw[par] + pw[chi]) / C;
-        X(i, 2)  = (heads[chi] + tails[par]) / lb;
-        X(i, 3)  = (heads[par] + tails[chi]) / lb;
+        X(i, 2)  = (heads[chi] + tails[par]) / static_cast<float>(lb);
+        X(i, 3)  = (heads[par] + tails[chi]) / static_cast<float>(lb);
         X(i, 4)  = (par_n_anc + chi_n_des) / N;
         X(i, 5)  = std::abs(task_assignment[par] - task_assignment[chi]) / static_cast<double>(ub);
 
