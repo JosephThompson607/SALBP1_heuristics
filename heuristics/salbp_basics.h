@@ -10,7 +10,9 @@
 int calc_salbp_1_bin_lbs(const std::vector<int> & task_times, int C);
 int calc_salbp_1_lbs(const ALBP& albp);
 int calc_lb_1(const std::vector<int>& task_time, int C);
-
+int ht_lbs(const ALBP& albp,
+              const std::vector<double>& heads,
+              const std::vector<double>& tails);
 float calc_lb_2(const std::vector<int> &task_time, int C);
 int calc_lb_3(const std::vector<int>& task_time, int C);
 int calc_lb_6(const std::vector<int>& task_time, int C);

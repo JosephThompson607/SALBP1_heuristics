@@ -554,6 +554,8 @@ def test_heads_and_tails(salbp, cycle_time, task_times_list, precedence_list):
     assert len(tails) == len(task_times_list), "number of tails does not match the number of tasks"
     assert salbp.get_heads(albp) == salbp.get_tails(rev_albp), "heads and tails not respecting symmetry"
 
+    ht_bounds = salbp.ht_lbs(albp, heads, tails)
+    assert 0 <= ht_bounds <= 13, f"Ht bounds are not in expected range {ht_bounds}"
 
     ##Testing heads and tails respect the bounds
     opt_assignments = [0, 0, 0, 3, 0, 6, 8, 0, 1, 3, 6, 5, 0, 8, 1, 0, 6, 6, 9, 5, 0, 1, 12, 10, 2, 7, 4, 10, 9, 10, 10, 2, 7, 4, 11, 11, 4, 8, 11, 11, 10, 4, 12, 11, 9, 12, 12, 12, 11, 5]

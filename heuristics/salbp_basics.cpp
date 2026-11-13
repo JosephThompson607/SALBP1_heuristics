@@ -430,6 +430,48 @@ int calc_salbp_1_lbs(const ALBP& albp) {
     int lb_6 = calc_lb_6(albp.task_time, albp.C);
     return std::max(lb_1, lb_6);
 }
+// Bounds 4 and 5 from Scholl (1999)
+int ht_lbs(const ALBP& albp,
+              const std::vector<double>& heads,
+              const std::vector<double>& tails) {
+    const auto& t_times = albp.task_time;
+    const double C = static_cast<double>(albp.C);
+    const int n = static_cast<int>(heads.size());
+
+    // Indices sorted by heads, descending (stable, like Python's sorted)
+    std::vector<int> h_or(n);
+    std::iota(h_or.begin(), h_or.end(), 0);
+    std::stable_sort(h_or.begin(), h_or.end(),
+                     [&](int a, int b) { return heads[a] > heads[b]; });
+
+    double lb_4_heads = 0.0;
+    double lb_5 = 0.0;
+    double prev = 0.0;
+    for (int i : h_or) {
+        const double t = t_times[i] / C;
+        lb_4_heads = std::max(t + heads[i] + prev, lb_4_heads);
+        lb_5 = std::max(heads[i] + t + tails[i], lb_5);
+        prev += t;
+    }
+
+    // Indices sorted by tails, descending
+    std::vector<int> t_or(n);
+    std::iota(t_or.begin(), t_or.end(), 0);
+    std::stable_sort(t_or.begin(), t_or.end(),
+                     [&](int a, int b) { return tails[a] > tails[b]; });
+
+    double lb_4_tails = 0.0;
+    prev = 0.0;
+    for (int i : t_or) {
+        const double t = t_times[i] / C;
+        lb_4_tails = std::max(t + tails[i] + prev, lb_4_tails);
+        prev += t;
+    }
+
+    // Small epsilon so 3.0000000000004 doesn't round up to 4
+    constexpr double eps = 1e-9;
+    return static_cast<int>(std::ceil(std::max({lb_4_heads, lb_4_tails, lb_5}) - eps));
+}
 
 
 

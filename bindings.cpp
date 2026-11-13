@@ -243,6 +243,10 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
     m.def("calc_salbp_1_lb6", &calc_lb_6, "calculates lb6 for salbp-1",
           py::arg("task_time"),
           py::arg("n_stations"));
+    m.def("ht_lbs", &ht_lbs,
+      py::arg("albp"), py::arg("heads"), py::arg("tails"),
+      py::call_guard<py::gil_scoped_release>(),
+      "Lower bounds 4 and 5 from Scholl (1999).");
     m.def("calc_salbp_2_lbs", &calc_salbp_2_lbs,
           "Calculates several lower bounds for salbp_2 and returns their maximum",
           py::arg("task_time"),
