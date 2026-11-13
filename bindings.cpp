@@ -235,6 +235,9 @@ PYBIND11_MODULE(SALBP1_heuristics, m) {
                 d["solution_time"] = sol.elapsed_ms.count();
                 d["method"] = sol.method;
                 d["loads"] = sol.loads;
+                d["lb"] = sol.lb;
+                d["optimal"] = sol.optimal;
+                d["local_opt"] = sol.local_opt;
                 return d;
             }, "Convert solution to dictionary");
     m.def("calc_salbp_1_lb6", &calc_lb_6, "calculates lb6 for salbp-1",

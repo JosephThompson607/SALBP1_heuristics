@@ -29,7 +29,7 @@ def import_salbp():
     Returns the module, or None if it couldn't be imported (details are
     printed either way).
     """
-    for build_dir in ("cmake-build-python_interface/", "build/"):
+    for build_dir in ("cmake-build-debug/", "build/"):
         if build_dir not in sys.path:
             sys.path.insert(0, build_dir)
 

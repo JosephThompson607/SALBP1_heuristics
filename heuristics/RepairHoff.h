@@ -32,7 +32,8 @@ public:
                 orig_solution_(albp_.N){}
             ;
 
-    ALBPSolution solve(const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how);
+    ALBPSolution solve(const std::vector<std::vector<int> > &station_assignments,
+                       const std::vector<std::vector<int> > &added_edges, const std::string &how);
 private:
     const ALBP& albp_;
     const bool do_sternatz_;

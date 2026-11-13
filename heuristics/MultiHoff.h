@@ -64,6 +64,7 @@ public:
     std::vector<int> n_suc_orig_{};
     std::map<int,  int> reverse_s_assignment_; //{task:(front, back)} note that back is starting counting from right.That won't cause a bug, won't it?
     std::mt19937 rng_;
+    std::uniform_real_distribution<float> unif_{0.0f, 1.0f};
     bool back_pass_=false; //After mf forward station assigments, filling in rest of stations from back
     bool reverse_ = false;  //After filling in stations starting from forward, fill in stations from back (phase 2)
     int n_attempts_;
@@ -79,7 +80,8 @@ public:
     int lb_;
     int forward_station_;
     int backward_station_;
-
+    bool done_; //In base acceptance, terminates early once packing is found
+    bool perfect_possible_;
     std::vector<int>  forw_ranking_{};
     std::vector<int>  back_ranking_{};
     //ALBPSolution solve_pass( );

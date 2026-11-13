@@ -148,6 +148,9 @@ int MultiHoff::one_packing_search( std::vector<int>&elig, const int station) {
     best_s_task_assign_.clear();
     n_attempts_ = 0;
     min_cost_ = FLT_MAX;
+    done_ = false;
+    //Track the case where a full packing is all we can hope for
+    perfect_possible_ = (alpha_ == 0 && beta_ == 0 && gamma_ == 0);
     gen_load(0, albp_.C, 0, albp_.C, elig );
 
     assert(calc_load(best_s_task_assign_, albp_)<= albp_.C);
@@ -281,6 +284,7 @@ ALBPSolution MultiHoff::solve_one_pass() {
            reflect_vector(mhh_sol_.task_assignment);
         }
         mhh_sol_.n_stations = ub_;
+        mhh_sol_.lb = lb_;
         mhh_sol_.task_to_station_and_load(albp_);
         mhh_sol_.station_to_ranking(false);
         return mhh_sol_;
@@ -423,13 +427,13 @@ void MultiHoff::remove_new_available(std::vector<int> &eligible_tasks, const int
 
 }
 void MultiHoff::gen_load(int depth, int remaining_capacity, const int start, float cost, std::vector<int> &eligible_tasks) {
-    std::uniform_real_distribution<double> dis(0.0, 1.0);
+
 
     // 4. Generate the random number
 
         int full_load = 1;
         for(int i=start;i<eligible_tasks.size();i++) {
-            if ((n_attempts_ >= max_attempts_) || (remaining_capacity<=0)) return;
+            if ((done_)||(n_attempts_ >= max_attempts_) || (remaining_capacity<=0)) return;
             if (int task = eligible_tasks[i]; albp_.task_time[task] <= remaining_capacity) {
                 full_load = 0;
                 s_task_assign_.push_back(task);
@@ -437,12 +441,13 @@ void MultiHoff::gen_load(int depth, int remaining_capacity, const int start, flo
                 add_new_available(eligible_tasks, task);
                 int sub_remaining_capacity = remaining_capacity - albp_.task_time[task];
                 float sub_cost = cost - albp_.task_time[task];
-                auto random_num = static_cast<float>((dis(rng_)));
+                float noise = (gamma_ != 0.0f) ? gamma_ * pert_size_ * unif_(rng_) : 0.0f;
+
                 if (back_pass_) { //Update costs with weighted values alpha_ and beta_. Alpha beta are determined at start of heuristic pass
-                    sub_cost = sub_cost - alpha_ * static_cast<float>(back_ranking_[task]) - beta_ * static_cast<float>(albp_.pred[task].size())  + gamma_ *random_num * pert_size_ ;
+                    sub_cost = sub_cost - alpha_ * static_cast<float>(back_ranking_[task]) - beta_ * static_cast<float>(albp_.pred[task].size())  + noise ;
                 }
                 else {
-                    sub_cost = sub_cost - alpha_ * static_cast<float>(forw_ranking_[task]) - beta_ * static_cast<float>(albp_.suc[task].size()) + gamma_ *random_num * pert_size_;
+                    sub_cost = sub_cost - alpha_ * static_cast<float>(forw_ranking_[task]) - beta_ * static_cast<float>(albp_.suc[task].size()) + noise;
 
                 }
                 if (sub_cost < min_cost_) {
@@ -451,6 +456,7 @@ void MultiHoff::gen_load(int depth, int remaining_capacity, const int start, flo
                     assert(albp_.C -sub_remaining_capacity == calc_load(s_task_assign_,albp_));
 
                     best_s_task_assign_ = s_task_assign_;
+                    if (perfect_possible_ && sub_remaining_capacity == 0) done_ = true;
                 }
                 gen_load(depth+1, sub_remaining_capacity, i+1, sub_cost,eligible_tasks );
 

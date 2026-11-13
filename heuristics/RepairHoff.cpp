@@ -133,7 +133,9 @@ ALBP RepairHoff::create_subproblem(const std::vector<std::vector<int> > &station
     return subproblem;
 }
 
-ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_assignments, const std::vector<std::vector<int>>& added_edges, const std::string& how) {
+ALBPSolution RepairHoff::solve(const std::vector<std::vector<int> > &station_assignments,
+                               const std::vector<std::vector<int> > &added_edges,
+                               const std::string &how) {
     //If full, immediately re-solve the entire problem
     if (how == "full") {
         MultiHoff solver(  albp_,
@@ -215,13 +217,15 @@ ALBPSolution RepairHoff::solve(const std::vector<std::vector<int>>&  station_ass
         }
 
     }
-
+    if (intermediate.optimal) {
+        orig_solution_.local_opt = true;
+    }
     orig_solution_.station_assignments = new_station_assignments;
     orig_solution_.n_stations = orig_solution_.station_assignments.size();
     orig_solution_.station_to_task();
     orig_solution_.station_to_load(albp_);
     orig_solution_.method = "RepairHoff";
-    if (orig_solution_.n_stations == lb_6) orig_solution_.optimal=true;
+    if (orig_solution_.n_stations == lb_6) orig_solution_.optimal=true, orig_solution_.local_opt=true;
     orig_solution_.n_violations = count_violations(albp_, orig_solution_.task_assignment);
     assert(orig_solution_.n_violations == 0);
     assert(orig_solution_.cycle_time <=albp_.C);
